@@ -28,24 +28,48 @@ See the **Git identity (hard rule)** section of `README.md`.
 
 ---
 
-## 2. Neon (Postgres)
+## 2. Postgres
+
+Two flavours — local dev runs against **Docker Compose**, production runs against **Neon**. Same Drizzle schema + migrations work for both; only `DATABASE_URL` differs.
+
+### 2a. Local dev — Docker Compose
+
+Zero cloud cost, zero Neon-quota burn. Spins up `postgres:16-alpine` on `localhost:5432`.
+
+```bash
+docker compose up -d postgres         # start the DB container
+npm run db:migrate                     # apply migrations (land in Basil's v0.1 PR)
+npm run db:seed                        # insert the 9 stages + 4 template placeholders
+npm run dev                            # app on http://localhost:3000
+```
+
+The default `.env.example` already points `DATABASE_URL` at this container (`postgres://postgres:postgres@localhost:5432/a4g_local`). Data persists in the `a4g-postgres-data` named volume. To wipe: `docker compose down -v`. To stop without wiping: `docker compose down`.
+
+### 2b. Production — Neon (serverless Postgres)
 
 1. Sign in at <https://console.neon.tech>.
 2. **Create project** → name `a4g-recruitment`, region closest to A4G users (e.g. `aws-ap-southeast-1`), Postgres 16.
 3. On the project dashboard, open **Connection details**:
-   - Select **Pooled connection** and copy the URL. Paste into `.env.local` as `DATABASE_URL`.
+   - Select **Pooled connection** and copy the URL. Paste into **Vercel** env vars as `DATABASE_URL` (not `.env.local`, which stays pointed at Docker for local dev).
    - *(Optional, for CI migrations only)* copy the **Direct connection** URL and paste as `DATABASE_URL_UNPOOLED`.
 4. Leave **scale-to-zero** enabled (default) — this is how we stay on the free tier.
 5. Back in the project dashboard, create a `main` branch snapshot so you can reset during v0.1 testing without losing anything.
 
-Database schema is applied by the Backend agent via:
+Why Neon for production specifically:
+- **Free at A4G's volume** — 0.5 GB storage + 190 compute hours/month covers ~6 h of active compute/day, which is plenty for bursty hiring cycles.
+- **Scale-to-zero** — the DB idles to $0 between campaigns. That's what makes the "zero recurring cost" target actually zero.
+- **Native Vercel integration** — one-click link; `DATABASE_URL` auto-injected at build time.
+- **Branching** — Neon branches are like git branches for the DB; use them to test migrations without touching prod.
+
+### Applying the schema (both environments)
 
 ```bash
-npm run db:generate   # writes SQL to /drizzle
-npm run db:migrate    # applies to DATABASE_URL
+npm run db:generate   # writes SQL to db/migrations
+npm run db:migrate    # applies to whatever DATABASE_URL points at
+npm run db:seed       # idempotent seed of stages + templates
 ```
 
-These scripts land in v0.1; re-run `db:migrate` after each version's schema change.
+Re-run `db:migrate` after each version's schema change.
 
 ---
 

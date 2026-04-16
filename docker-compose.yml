@@ -1,0 +1,38 @@
+# Local-development Postgres for the A4G recruitment automation app.
+# Production runs on Neon (see DEPLOYMENT.md §2). This container is for
+# local dev only — so agents can iterate on schema + migrations + seeds
+# without burning Neon's 190 compute-hour/month free-tier budget.
+#
+# Usage:
+#   docker compose up -d postgres          # start the DB in the background
+#   npm run db:migrate                      # apply Drizzle migrations
+#   npm run db:seed                         # insert the 9 stages + 4 templates
+#   npm run dev                             # app hits localhost:5432
+#   docker compose down                     # stop (data persists in the volume)
+#   docker compose down -v                  # stop + wipe the volume (fresh DB)
+#
+# Corresponding .env.local entry:
+#   DATABASE_URL=postgres://postgres:postgres@localhost:5432/a4g_local
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: a4g-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: a4g_local
+    ports:
+      - "5432:5432"
+    volumes:
+      - a4g-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d a4g_local"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  a4g-postgres-data:
+    name: a4g-postgres-data

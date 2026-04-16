@@ -10,11 +10,24 @@ Zero-recurring-cost recruitment automation platform for A4G Impact Collaborative
 - `CONTRACTS.md` — authoritative API/env/payload contracts shared between agents
 - `docs/multi-claude-setup-guide.md` — tmux + WSL multi-Claude setup
 
+## The team
+
+Four Claude agents in one tmux session, each with a name + lane (ownership table in `BUILD_PLAN.md §1`):
+
+| Pane | Name | Role |
+|---|---|---|
+| `a4g:0.0` | **Orion** | Orchestrator — reviews PRs, merges to `main`, owns framework config + `PROGRESS.md` |
+| `a4g:0.1` | **Basil** | Backend — Drizzle schema, API routes, NextAuth, safety dispatcher |
+| `a4g:0.2` | **Fern** | Frontend — UI pages, shadcn components, TanStack Query, Kanban |
+| `a4g:0.3` | **Iris** | Integrations — Google Sheets, Resend, Snov.io, Vercel Cron |
+
+All four commit as the single git identity `SnehaChouksey <snehachoukseyobc@gmail.com>` — names are collaboration shorthand, not git authors.
+
 ## Quick start for agents
 
 1. Open WSL terminal in `/mnt/d/workspace/Linkedin-automation`.
 2. Launch the session: `~/claude-session.sh a4g 4` (see `docs/multi-claude-setup-guide.md`).
-3. Paste the relevant role prompt from `BUILD_PLAN.md` §3 into each pane.
+3. Paste the relevant role prompt from `BUILD_PLAN.md §3` into each pane (each prompt begins "You are Orion/Basil/Fern/Iris…").
 4. Read `PROGRESS.md` to see which version is active and what your agent owns.
 5. Read `CONTRACTS.md` for the interfaces to consume or publish.
 

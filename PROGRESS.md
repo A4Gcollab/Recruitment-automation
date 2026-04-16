@@ -6,7 +6,7 @@ Single source of truth for **what's being built right now** and **what's done**.
 
 ## Current Version
 
-**v0.1 — Foundation** · Status: `not started`
+**v0.1 — Foundation** · Status: `in progress — orchestrator scaffold landed, agents unblocked`
 
 ---
 
@@ -38,14 +38,14 @@ Single source of truth for **what's being built right now** and **what's done**.
 
 ### Orchestrator · `agent/orchestrator/v0.1-bootstrap`
 
-- [ ] Initialise Next.js 15 App Router project with TypeScript, Tailwind, ESLint at repo root
-- [ ] Initialise shadcn/ui (`npx shadcn@latest init`)
-- [ ] Create Neon project, obtain `DATABASE_URL`, add to `.env.example` and `.env.local`
-- [ ] Create Vercel project, link to the repo, import Neon integration
-- [ ] Populate `.env.example` with the full env var list from `CONTRACTS.md`
-- [ ] Create `DEPLOYMENT.md` with step-by-step Neon + Vercel + Google service account setup
-- [ ] Set up GitHub repo with branch protection on `main` (or local git with a clear merge ritual if no remote)
-- [ ] Set up basic CI: typecheck + lint on PR
+- [x] Initialise Next.js 15 App Router project with TypeScript, Tailwind, ESLint at repo root (Next 15.5.15, Tailwind v4, ESLint v9, Turbopack dev/build)
+- [x] Initialise shadcn/ui — `components.json` + `lib/utils.ts` written manually (Tailwind v4 config, `new-york` style, `slate` base, `@/` alias). Backend to `npm install` + `npx shadcn@latest add <component>` as needed
+- [ ] Create Neon project, obtain `DATABASE_URL`, add to `.env.local` — **owner to do in UI per DEPLOYMENT.md §2**
+- [ ] Create Vercel project, link to the repo, import Neon integration — **owner to do in UI per DEPLOYMENT.md §3**
+- [x] Populate `.env.example` with the full env var list from `CONTRACTS.md` (v0.1 active; v0.4–v0.7 vars commented out and will be uncommented per-version)
+- [x] Create `DEPLOYMENT.md` with step-by-step Neon + Vercel + Google service account setup
+- [x] Set up GitHub repo — remote wired to `A4Gcollab/Recruitment-automation`, repo-level identity locked to `SnehaChouksey`, `.githooks/pre-commit` enforces identity, credential helper bridges to `gh.exe` keyring, initial commit `456395b` pushed to `main`. **Branch protection blocked — see Blockers.**
+- [ ] Set up basic CI: typecheck + lint on PR — blocked on branch protection (need required-status-check target)
 - [ ] After Backend agent publishes schema and API surface, Frontend + Integrations can start in parallel
 - [ ] Demo check at end: run all demo criteria above; only merge when all pass
 
@@ -100,8 +100,11 @@ Work specs will be drafted here by the Orchestrator when v0.1 merges. Do not dra
 
 ## Blockers / Decisions Needed
 
-- **Frontend v0.1 blocked on Orchestrator bootstrap** — _raised 2026-04-16 by Frontend agent._ CONTRACTS.md §2 has the `GET /api/candidates` and `POST /api/candidates/import` signatures published, so the contract gate is cleared. However, the repo has no Next.js 15 scaffold, no `package.json`, no shadcn/ui init, and is not a git repo yet — all of which are on the Orchestrator's `agent/orchestrator/v0.1-bootstrap` checklist. Frontend cannot create `agent/frontend/v0.1-dashboard`, install TanStack Query, or build `/login` and `/dashboard` until the App Router scaffold, Tailwind, shadcn, and git repo exist. **Owner: Orchestrator.** **Resolution needed:** run the Orchestrator bootstrap checklist (items 1–7) so Frontend has a repo to branch from.
+- ~~**Frontend v0.1 blocked on Orchestrator bootstrap**~~ — _resolved 2026-04-16 by Orchestrator._ Scaffold + git repo + shadcn config landed in commit `456395b` on `main`. Frontend unblocked.
 - **Frontend v0.1 also needs Backend auth wiring before `/login` is meaningfully testable** — _raised 2026-04-16 by Frontend agent._ NextAuth v5 credentials provider, `ADMIN_EMAIL` / `ADMIN_PASSWORD_HASH` handling, and `/api/auth/[...nextauth]` are on the Backend checklist. Frontend can build the form against the documented contract, but end-to-end login verification requires the Backend PR to land first. Not strictly blocking UI work — noted so Orchestrator can sequence merge order.
+- **Branch protection on `main`** — _raised 2026-04-16 by Orchestrator._ `gh api PUT /repos/A4Gcollab/Recruitment-automation/branches/main/protection` returned `404 Not Found`. Both gh-stored tokens resolve to user `SnehaChouksey` with `permissions.admin = false` (push/pull/triage only). Only the repo owner (`A4Gcollab` account, also a user account per GitHub API) can enable protection. **Owner to do in GitHub UI:** Settings → Branches → Add branch protection rule → pattern `main` → require PR review (1 approval), dismiss stale reviews, disallow force-push, disallow deletion. Until then, agents must respect the "no direct push to `main`" rule manually.
+- **CI (typecheck + lint on PR)** — Orchestrator to add `.github/workflows/ci.yml` once branch protection is enabled so the workflow can be set as a required status check.
+- **Neon project + Vercel project** — need to be created by the owner. Steps in `DEPLOYMENT.md` §2 and §3. Paste resulting `DATABASE_URL` into `.env.local` (local) and Vercel Project Settings (production).
 
 ---
 
@@ -109,3 +112,4 @@ Work specs will be drafted here by the Orchestrator when v0.1 merges. Do not dra
 
 - 2026-04-16 — BUILD_PLAN.md and PROGRESS.md initialised; v0.1 work specs drafted
 - 2026-04-16 — Frontend agent started v0.1; flagged blocker: Next.js scaffold + git repo not yet initialised by Orchestrator; contract gate for candidates endpoints is cleared in CONTRACTS.md §2
+- 2026-04-16 — git repo initialised; remote wired to `A4Gcollab/Recruitment-automation`; repo-level identity set to `SnehaChouksey <snehachoukseyobc@gmail.com>`; pre-commit identity hook installed at `.githooks/pre-commit`; credential helper at `scripts/git-credential-gh.sh` bridges WSL git to the Windows `gh.exe` keyring; initial commit `456395b` pushed to `main`. Scaffold (Next.js 15.5.15 App Router + Tailwind v4 + ESLint + shadcn config), `.env.example`, and `DEPLOYMENT.md` shipped in the same commit. Branch protection request blocked on admin permission — logged under Blockers.

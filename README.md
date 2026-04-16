@@ -21,3 +21,18 @@ Zero-recurring-cost recruitment automation platform for A4G Impact Collaborative
 ## Stack snapshot
 
 Next.js 15 App Router · TypeScript · Tailwind · shadcn/ui · Drizzle ORM · Neon Postgres · NextAuth v5 · Resend · Snov.io · @dnd-kit · TanStack Query · Vercel (Hobby) · Vercel Cron · UptimeRobot
+
+## Git identity (hard rule)
+
+Every commit to this repo **must** be authored by `SnehaChouksey <snehachoukseyobc@gmail.com>`. The rule is enforced automatically by `.githooks/pre-commit` (wired via repo-local `core.hooksPath = .githooks`); any commit with a mismatching identity is rejected before it lands.
+
+- **Remote:** `https://github.com/A4Gcollab/Recruitment-automation.git` (origin). Push only to `main` via a PR.
+- **Set identity (once per fresh clone):**
+  ```bash
+  git config --local user.name  "SnehaChouksey"
+  git config --local user.email "snehachoukseyobc@gmail.com"
+  ```
+- **Never** run `git config --global` in this repo. **Never** use `--no-verify`, `--force`, `--force-with-lease` against `main`, or `git reset --hard` against anything you did not create in the current session.
+- **Pushes authenticate via** `scripts/git-credential-gh.sh`, which reads the token from the Windows `gh.exe` keyring (active account must be `SnehaChouksey`). Verify with `gh auth status`.
+
+If the hook rejects a commit with an identity error, re-run the two `git config --local` commands above and retry. Do not bypass.

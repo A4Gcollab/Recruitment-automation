@@ -1,0 +1,28 @@
+# dependencies
+node_modules/
+
+# next
+.next/
+.turbo/
+
+# build output
+dist/
+build/
+
+# env
+.env
+.env.local
+.env*.local
+
+# vercel
+.vercel/
+
+# logs
+*.log
+coverage/
+
+# os
+.DS_Store
+
+# Claude Code per-user settings (shared settings.json stays tracked)
+.claude/*.local.json

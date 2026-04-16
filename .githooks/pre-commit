@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Enforces the project's git identity rule on every commit.
+# See README.md → "Git identity (hard rule)".
+set -u
+
+EXPECTED_NAME="SnehaChouksey"
+EXPECTED_EMAIL="snehachoukseyobc@gmail.com"
+
+ACTUAL_NAME="$(git config --local --get user.name || true)"
+ACTUAL_EMAIL="$(git config --local --get user.email || true)"
+
+RED='\033[0;31m'
+BOLD='\033[1m'
+NC='\033[0m'
+
+if [ "$ACTUAL_NAME" != "$EXPECTED_NAME" ] || [ "$ACTUAL_EMAIL" != "$EXPECTED_EMAIL" ]; then
+  {
+    printf '%b%bpre-commit: git identity does not match the project rule.%b\n' "$RED" "$BOLD" "$NC"
+    printf '  expected: %s <%s>\n' "$EXPECTED_NAME" "$EXPECTED_EMAIL"
+    printf '  actual:   %s <%s>\n' "${ACTUAL_NAME:-<unset>}" "${ACTUAL_EMAIL:-<unset>}"
+    printf '\n%bFix by running these two commands from the repo root:%b\n' "$RED" "$NC"
+    printf '  git config --local user.name "%s"\n' "$EXPECTED_NAME"
+    printf '  git config --local user.email "%s"\n' "$EXPECTED_EMAIL"
+    printf '\nDo NOT bypass this hook with --no-verify.\n'
+  } 1>&2
+  exit 1
+fi
+
+exit 0

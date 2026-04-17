@@ -6,7 +6,7 @@ Single source of truth for **what's being built right now** and **what's done**.
 
 ## Current Version
 
-**v0.1 — Foundation + Stage-1 Email** · Status: `not started`
+**v0.1 — Foundation + Stage-1 Email** · Status: `in progress`
 
 ---
 
@@ -37,7 +37,71 @@ Single source of truth for **what's being built right now** and **what's done**.
 - [ ] Every write emits an `audit_log` row
 - [ ] Data persists across server restart (PostgreSQL connection works)
 
-_Per-agent work specs to be drafted by Orion when v0.1 starts._
+### Orion (Orchestrator) · `main`
+
+- [ ] Remove v1.0 Resend deps from `package.json` (`resend` if present); add `nodemailer` + `@types/nodemailer`
+- [ ] Update `.env.local` with Gmail SMTP placeholders (user fills in real values)
+- [ ] After all 3 agent PRs merge, run demo criteria end-to-end
+- [ ] Ship CI workflow (`.github/workflows/ci.yml`) as a follow-up PR
+
+### Basil (Backend) · `agent/backend/v0.1-foundation`
+
+**Branch from latest `main`. Rewrite `db/schema.ts` from scratch — do NOT modify v1.0 migration.**
+
+- [ ] New Drizzle schema `db/schema.ts` — 6 tables for v0.1:
+  - `campaigns` — id (uuid PK), role_name, google_form_url, zoom_link, zoom_meeting_id, zoom_passcode, interview_date, interview_time, interview_mode, status (active/paused/closed), created_at
+  - `candidates` — id (uuid PK), full_name, email (nullable, partial unique where not null), linkedin_url, headline, location, application_date, campaign_id (FK), stage (default 'imported'), email_enriched (bool), notes, google_sheet_row, created_at, updated_at
+  - `email_queue` — id (uuid PK), candidate_id (FK), campaign_id (FK), template_type (stage1/reminder/stage2), scheduled_for (timestamptz), status (pending/processing/sent/failed/cancelled), retry_count (default 0), idempotency_key (unique), error_message, sent_at, created_at. Filtered index on `scheduled_for WHERE status='pending'`
+  - `stages` — id (varchar PK), label, position. Seed: imported, good_fit, stage1_sent, form_submitted, evaluated, reminder_sent, stage2_sent, confirmed, rejected (9 stages)
+  - `audit_log` — same as v1.0 (actor, action, entity_type, entity_id, before/after jsonb, metadata jsonb, created_at)
+  - `role_configs` — id (uuid PK), role_name (unique), google_form_url, zoom_link, zoom_meeting_id, zoom_passcode, default_interview_date, default_interview_time, interview_mode, created_at, updated_at
+- [ ] New migration `db/migrations/0001_v2.1_reset.sql` via `drizzle-kit generate`. Drop v1.0 tables first if they exist, then create v2.1 tables
+- [ ] Seed script: 9 stages
+- [ ] `lib/types.ts` — shared types: `Campaign`, `Candidate`, `RoleConfig`, `EmailQueueItem`, `Stage`, `AuditLogEntry`. Include `CandidatesListResponse`. Publish to CONTRACTS.md §4
+- [ ] `lib/audit.ts` — keep `logAudit` pattern from v1.0
+- [ ] `lib/email/sender.ts` — `sendEmail(to, subject, html, text)` using the Nodemailer transport from Iris. Rate limiting: check `email_queue` count for current hour, check IST sending window, check kill switch. If outside window or cap exceeded, return `{ queued: true }` instead of sending
+- [ ] `lib/email/templates.ts` — `renderStage1(candidate, campaign, roleConfig)` returning `{ subject, html, text }` with variable substitution. Use the real Stage-1 template from PRD v2.1 §6.2.2
+- [ ] `app/api/campaigns/route.ts` — `POST` (create campaign with role_config link) + `GET` (list campaigns)
+- [ ] `app/api/campaigns/[id]/route.ts` — `GET` (campaign detail with candidate counts)
+- [ ] `app/api/campaigns/[id]/import/route.ts` — `POST { google_sheet_url, column_mapping }` — calls `fetchSheetRows` from Iris, writes candidates to DB + audit log
+- [ ] `app/api/candidates/route.ts` — `GET` with campaign_id filter, pagination
+- [ ] `app/api/emails/send/route.ts` — `POST { candidate_id, template_type }` — renders template, inserts into `email_queue`, returns queued status
+- [ ] `app/api/cron/process-queue/route.ts` — `GET` — processes pending `email_queue` rows: calls `sendEmail`, updates status, respects rate limits. Protected by `CRON_SECRET` header
+- [ ] `app/api/health/route.ts` — keep from v1.0
+- [ ] NextAuth v5 — keep `auth.ts` + `auth.config.ts` + `middleware.ts` from v1.0 (they work)
+- [ ] Publish all endpoint signatures to CONTRACTS.md §2 **before** implementing
+- [ ] Open PR to `main`
+
+### Fern (Frontend) · `agent/frontend/v0.1-dashboard`
+
+**Wait for Basil to publish CONTRACTS.md §2 endpoints + §4 types. Branch from latest `main`.**
+
+- [ ] `/login` — keep v1.0 login form (works with NextAuth)
+- [ ] `/dashboard` — campaign list page: shows all campaigns with candidate count + status. "Create Campaign" button
+- [ ] Campaign create modal: role name, Google Form URL, Zoom link, meeting ID, passcode, interview date/time/mode. Submits to `POST /api/campaigns`
+- [ ] `/campaigns/[id]` — candidate table (name, email, LinkedIn URL, stage, actions). Import button in header. "Send Stage-1" button per candidate row
+- [ ] Import modal: paste Google Sheet URL → column mapping preview → confirm. Posts to `POST /api/campaigns/[id]/import`. Toast with imported/skipped/errors
+- [ ] Send Stage-1 confirmation dialog: shows email preview (template with candidate's name filled in) → confirm → calls `POST /api/emails/send`
+- [ ] Loading skeletons, error boundary, empty states
+- [ ] TanStack Query for all API calls
+- [ ] Open PR to `main`
+
+### Iris (Integrations) · `agent/integrations/v0.1-gmail-sheets`
+
+**Branch from latest `main`.**
+
+- [ ] `lib/nodemailer/transport.ts` — creates and exports a Nodemailer transporter using `GMAIL_USER` + `GMAIL_APP_PASSWORD` + `GMAIL_SENDER_NAME` from env. Exports `verifyConnection()` for health checks. Publish signature to CONTRACTS.md §5
+- [ ] `lib/sheets/client.ts` — keep v1.0 Google Sheets service account auth (works)
+- [ ] `lib/sheets/fetchRows.ts` — keep v1.0 `fetchSheetRows` function (works). Update column auto-detect to include `headline`, `location`, `application_date` header variants
+- [ ] Publish `GMAIL_USER`, `GMAIL_APP_PASSWORD`, `GMAIL_SENDER_NAME` env vars to CONTRACTS.md §1 if not already there
+- [ ] Open PR to `main`
+
+### Integration points
+
+1. **Basil publishes CONTRACTS.md §2 + §4 first** → unblocks Fern
+2. **Iris publishes Nodemailer transport signature to CONTRACTS.md §5** → unblocks Basil's `lib/email/sender.ts`
+3. **Iris's `fetchSheetRows` already exists on main** — Basil imports it in the import route
+4. **Merge order: Iris → Basil → Fern** (Basil depends on Iris's transport; Fern depends on Basil's types + routes)
 
 ---
 

@@ -223,6 +223,13 @@ export type ImportResult = {
   errors: ImportError[];
 };
 
+export type CandidatesListResponse = {
+  items: Candidate[];
+  total: number;
+  page: number;
+  page_size: number;
+};
+
 export type ApiError = {
   error: {
     code: string;

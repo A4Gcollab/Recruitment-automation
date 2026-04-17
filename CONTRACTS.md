@@ -245,7 +245,7 @@ export type ApiError = {
 
 ### `lib/sheets/fetchRows.ts` (v0.1, Integrations)
 
-Proposed by Backend 2026-04-16 to unblock the import route. Integrations owns the implementation and may widen the return type, but must not narrow the input or remove fields from the error/row shapes below without a `Blockers / Decisions Needed` note.
+Proposed by Backend 2026-04-16. **Ratified by Integrations 2026-04-16** — implemented in `lib/sheets/fetchRows.ts` with `google-spreadsheet` v4 + service-account auth. Integrations owns the implementation; Backend must not change the exported types without an Amendment Rule note.
 
 ```ts
 import type { ColumnMapping } from "@/lib/types";
@@ -268,14 +268,24 @@ export type FetchSheetRowsResult = {
   sheet_title: string;          // for audit_log metadata
 };
 
+export class SheetUnreachableError extends Error {}  // bad URL, missing sharing, env var missing
+export class SheetUpstreamError extends Error {}      // transient Google API failure
+
 export async function fetchSheetRows(args: {
   url: string;
   mapping: ColumnMapping;
   batchSize?: number;           // default 100
 }): Promise<FetchSheetRowsResult>;
+
+/** Auto-detect heuristic — maps common header variants to ColumnMapping fields.
+ *  Used by the Frontend import wizard to pre-fill column mapping before confirm. */
+export function suggestMapping(headers: string[]): Partial<ColumnMapping>;
 ```
 
-Error semantics: if the sheet is unreachable (bad URL, service account not shared on the sheet, API quota, etc.) the function throws. The Backend import route translates thrown errors into `sheet_unreachable` / `sheet_upstream_error` response codes per §2. Row-level malformed data is never thrown — it is returned in `errors`.
+Error semantics: if the sheet is unreachable (bad URL, service account not shared on the sheet, API quota, etc.) the function throws `SheetUnreachableError` or `SheetUpstreamError`. The Backend import route translates these into `sheet_unreachable` / `sheet_upstream_error` response codes per §2. Row-level malformed data is never thrown — it is returned in `errors`.
+
+Also exported from `lib/sheets/client.ts`:
+- `parseSheetUrl(url: string): { spreadsheetId: string; gid: number }` — extracts the spreadsheet ID and sheet gid from a Google Sheets URL. Used internally by `getSheet`; may also be used by Backend for URL validation before calling `fetchSheetRows`.
 
 ### `lib/email/sender.ts` (v0.4, Backend)
 

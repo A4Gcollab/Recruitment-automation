@@ -1,10 +1,10 @@
 # DEPLOYMENT
 
-Step-by-step setup for a fresh deployment of A4G Recruitment Automation. Follow top-to-bottom the first time. Re-runs should only need the sections that changed.
+Step-by-step setup for A4G LinkedIn Recruitment Automation. Follow top-to-bottom the first time.
 
-- **Prereqs:** a GitHub login with access to `A4Gcollab/Recruitment-automation`, a Neon account, a Vercel account, a Google Cloud account, Node 22+, and `npm` 10+.
-- **Stack lock:** Next.js 15 · Neon Postgres · Vercel Hobby · Resend · Snov.io. See `PRD.md §5` for rationale.
-- **Secrets convention:** every variable listed in `CONTRACTS.md §1` lives in `.env.local` locally and in Vercel Project → Settings → Environment Variables in production. Nothing is prefixed `NEXT_PUBLIC_`.
+- **Prereqs:** GitHub access to `A4Gcollab/Recruitment-automation`, a Google Cloud account, a Gmail account for sending, Node 22+, `npm` 10+.
+- **Stack:** Next.js 15 · PostgreSQL (local: WSL; prod: Neon) · Vercel Hobby · Gmail SMTP · Google Sheets API · Gmail API. See `PRD_v2.1.md` for rationale.
+- **Secrets:** every variable in `CONTRACTS.md §1` lives in `.env.local` locally and Vercel env vars in production. Nothing is `NEXT_PUBLIC_`.
 
 ---
 
@@ -17,162 +17,164 @@ npm install
 cp .env.example .env.local
 ```
 
-The pre-commit hook at `.githooks/pre-commit` is already wired via `core.hooksPath`. First commit you attempt will fail until your repo identity matches:
-
+Pre-commit hook at `.githooks/pre-commit` enforces git identity:
 ```bash
 git config --local user.name  "SnehaChouksey"
 git config --local user.email "snehachoukseyobc@gmail.com"
 ```
 
-See the **Git identity (hard rule)** section of `README.md`.
-
 ---
 
-## 2. Postgres
+## 2. PostgreSQL
 
-Two flavours — local dev runs against **Docker Compose**, production runs against **Neon**. Same Drizzle schema + migrations work for both; only `DATABASE_URL` differs.
-
-### 2a. Local dev — Docker Compose
-
-Zero cloud cost, zero Neon-quota burn. Spins up `postgres:16-alpine` on `localhost:5432`.
+### 2a. Local dev — WSL native
 
 ```bash
-docker compose up -d postgres         # start the DB container
-npm run db:migrate                     # apply migrations (land in Basil's v0.1 PR)
-npm run db:seed                        # insert the 9 stages + 4 template placeholders
-npm run dev                            # app on http://localhost:3000
+sudo apt install -y postgresql postgresql-client
+sudo service postgresql start
+sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'postgres';"
+sudo -u postgres createdb a4g_local
 ```
 
-The default `.env.example` already points `DATABASE_URL` at this container (`postgres://postgres:postgres@localhost:5432/a4g_local`). Data persists in the `a4g-postgres-data` named volume. To wipe: `docker compose down -v`. To stop without wiping: `docker compose down`.
+`.env.local` already defaults to: `DATABASE_URL=postgres://postgres:postgres@localhost:5432/a4g_local`
 
-### 2b. Production — Neon (serverless Postgres)
+### 2b. Production — Neon (free tier)
 
 1. Sign in at <https://console.neon.tech>.
-2. **Create project** → name `a4g-recruitment`, region closest to A4G users (e.g. `aws-ap-southeast-1`), Postgres 16.
-3. On the project dashboard, open **Connection details**:
-   - Select **Pooled connection** and copy the URL. Paste into **Vercel** env vars as `DATABASE_URL` (not `.env.local`, which stays pointed at Docker for local dev).
-   - *(Optional, for CI migrations only)* copy the **Direct connection** URL and paste as `DATABASE_URL_UNPOOLED`.
-4. Leave **scale-to-zero** enabled (default) — this is how we stay on the free tier.
-5. Back in the project dashboard, create a `main` branch snapshot so you can reset during v0.1 testing without losing anything.
-
-Why Neon for production specifically:
-- **Free at A4G's volume** — 0.5 GB storage + 190 compute hours/month covers ~6 h of active compute/day, which is plenty for bursty hiring cycles.
-- **Scale-to-zero** — the DB idles to $0 between campaigns. That's what makes the "zero recurring cost" target actually zero.
-- **Native Vercel integration** — one-click link; `DATABASE_URL` auto-injected at build time.
-- **Branching** — Neon branches are like git branches for the DB; use them to test migrations without touching prod.
-
-### Applying the schema (both environments)
-
-```bash
-npm run db:generate   # writes SQL to db/migrations
-npm run db:migrate    # applies to whatever DATABASE_URL points at
-npm run db:seed       # idempotent seed of stages + templates
-```
-
-Re-run `db:migrate` after each version's schema change.
+2. Create project `a4g-recruitment`, Postgres 16.
+3. Copy the **pooled connection** URL → paste into Vercel env vars as `DATABASE_URL`.
 
 ---
 
-## 3. Vercel
+## 3. Gmail SMTP (email sending)
 
-1. Sign in at <https://vercel.com>.
-2. **Add New → Project** → import `A4Gcollab/Recruitment-automation` from GitHub. Framework preset auto-detects Next.js 15.
-3. **Do not deploy yet** — first add environment variables under **Settings → Environment Variables**, one per line, for scope **Production**, **Preview**, and **Development**:
+All candidate emails (Stage-1 form link, reminders, Stage-2 interview invite) are sent via Gmail SMTP using Nodemailer.
 
-   | Variable | Value |
-   |---|---|
-   | `DATABASE_URL` | Paste the Neon pooled URL |
-   | `NEXTAUTH_SECRET` | `openssl rand -base64 32` |
-   | `NEXTAUTH_URL` | After first deploy, paste the Vercel URL (e.g. `https://a4g-recruitment.vercel.app`) |
-   | `ADMIN_EMAIL` | e.g. `suhani@a4gimpact.org` |
-   | `ADMIN_PASSWORD_HASH` | `node -e "console.log(require('bcryptjs').hashSync('PASSWORD',10))"` |
-   | `GOOGLE_SERVICE_ACCOUNT_EMAIL` | From §4 below |
-   | `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` | From §4 below — paste with real newlines, surrounded by `"…"` |
+1. Use or create a dedicated Gmail account (e.g. `hr.omysha@gmail.com`).
+2. Enable **2-Step Verification**: Google Account → Security → 2-Step Verification → Turn on.
+3. Generate an **App Password**: Google Account → Security → App Passwords → select "Mail" → Generate. Copy the 16-character code.
+4. Fill in `.env.local`:
+   ```
+   GMAIL_USER=hr.omysha@gmail.com
+   GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx
+   GMAIL_SENDER_NAME=Omysha Foundation — HR Team
+   ```
+5. Test: once the app is running, send a single Stage-1 email from the dashboard. Confirm it lands in the candidate's inbox (not spam).
 
-4. **Storage → Add Database → Neon** → link the existing Neon project. Vercel will inject `DATABASE_URL` automatically on the Vercel side; overwrite only if it differs from what you pasted.
-5. Click **Deploy**. Once the first deploy completes, copy the production URL and update `NEXTAUTH_URL`, then redeploy.
-6. Cron (lands in v0.6): a `vercel.json` at the repo root will register one cron job. Vercel Hobby allows one hourly cron — no action needed until v0.6.
+**Daily limit:** 500 emails/day (free Gmail) or 2,000/day (Google Workspace ~$6/mo). Sufficient for A4G's volume.
 
 ---
 
-## 4. Google Service Account (Sheets import)
+## 4. Google Service Account (Sheets API)
 
-The app authenticates to Google Sheets using a **service account** (never a human OAuth flow). Each candidate source sheet is shared with the service account's email address.
+The app reads applicant data from Google Sheets (import), polls form response sheets, and creates/updates campaign tracker sheets.
 
 ### 4.1 Create a Google Cloud project
 
-1. Go to <https://console.cloud.google.com>.
-2. Top bar → **Select a project → New project**.
-3. Name: `a4g-recruitment`. Leave the organisation as-is. **Create**.
+1. <https://console.cloud.google.com> → New project → name `a4g-recruitment`.
 
-### 4.2 Enable the Sheets API
+### 4.2 Enable APIs
 
-1. In the new project, sidebar → **APIs & Services → Library**.
-2. Search **Google Sheets API** → **Enable**.
+1. APIs & Services → Library → search **Google Sheets API** → Enable.
+2. (v0.3+) Search **Gmail API** → Enable.
 
-### 4.3 Create the service account
+### 4.3 Create service account
 
-1. Sidebar → **IAM & Admin → Service Accounts → Create service account**.
-2. Name: `a4g-sheets-reader`. Service account ID auto-fills.
-3. Skip the "Grant this service account access to project" step (no project roles needed — access is per-sheet).
-4. Skip "Grant users access". **Done**.
-5. On the service account list, click the new account → **Keys** tab → **Add Key → Create new key → JSON** → **Create**. A JSON file downloads. **Do not commit it.**
+1. IAM & Admin → Service Accounts → Create → name `a4g-sheets`.
+2. Skip project roles. Skip user access. Done.
+3. Click the account → Keys → Add Key → JSON → Create. Download the JSON file.
 
-### 4.4 Extract env vars from the JSON
+### 4.4 Extract env vars
 
-Open the downloaded JSON. You need two fields:
+From the JSON:
+- `client_email` → `GOOGLE_SERVICE_ACCOUNT_EMAIL`
+- `private_key` → `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` (wrap in double quotes in `.env.local`)
 
-- `client_email` → paste into `.env.local` as `GOOGLE_SERVICE_ACCOUNT_EMAIL`.
-- `private_key` → paste into `.env.local` as `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`. Wrap in double quotes so the embedded `\n` survives:
+### 4.5 Share sheets
 
-  ```
-  GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMII...\n-----END PRIVATE KEY-----\n"
-  ```
-
-In Vercel, paste the private key value **with real newlines** (Vercel's UI allows multiline values).
-
-### 4.5 Share each source sheet with the service account
-
-For every Google Sheet that the HR team wants to import:
-
-1. Open the sheet in Google Drive.
-2. Click **Share** (top right).
-3. Paste the `GOOGLE_SERVICE_ACCOUNT_EMAIL` value as a person → role **Viewer** → **Send**. (Uncheck "Notify people" — the service account doesn't read email.)
-
-That's it — the app can now read that sheet. No further Google Cloud setup until v0.7 enables two-way sync (which requires **Editor** access on the campaign tracker sheet).
-
-### 4.6 Rotate keys
-
-Service account keys do not expire automatically. Rotate at least every 12 months or when a collaborator leaves the team: **Service Accounts → a4g-sheets-reader → Keys → Add key** (new), then delete the old one. Update `.env.local` and Vercel.
+For every Google Sheet the app needs to read (applicant export, form responses):
+1. Open the sheet → Share → paste the service account email → Viewer.
+2. For tracker sheets the app creates: share with Editor access.
 
 ---
 
-## 5. First-run checklist
+## 5. LinkedIn Easy Apply + ApplicantSync (applicant export)
 
-Before you hit "Import candidates" for the first time:
+### 5.1 Job posting setup (per job)
 
-- [ ] `.env.local` populated from `.env.example`.
-- [ ] `npm run db:migrate` ran cleanly.
-- [ ] You can log in at `/login` with `ADMIN_EMAIL` + the password you hashed.
-- [ ] The target Google Sheet is shared with `GOOGLE_SERVICE_ACCOUNT_EMAIL`.
-- [ ] Header row of the sheet has at minimum a **name** column and a **role** column (email and LinkedIn URL are optional — they can be enriched later).
+1. Create/edit job on LinkedIn → set to **Easy Apply** (not External Apply).
+2. Screening questions → Add → Custom question: "Please enter your email address so we can send you the next steps."
+3. Set type: Short answer. Mark: Required. Publish.
+
+### 5.2 Install Chrome extension (one-time)
+
+Install **[ApplicantSync](https://www.applicantsync.com)** (free, unlimited) in Chrome. Alternative: [LinkedIn Job Applicants Exporter](https://chromewebstore.google.com/detail/gpncmkeondkmbbchjekdilncigiphljb).
+
+### 5.3 Export applicants (per campaign)
+
+1. Open the job posting → Applicants tab in Chrome.
+2. Click the ApplicantSync extension icon → Export All → save as Google Sheet.
+3. Share the Google Sheet with the service account email (§4.5).
+4. In the app dashboard: Create Campaign → Import → paste the Sheet URL → map columns → confirm.
 
 ---
 
-## 6. Rollback
+## 6. Gmail API — reply detection (v0.3+)
 
-Vercel retains every deployment. Project dashboard → **Deployments** → pick a previous one → **Promote to Production**. Zero-downtime.
+For detecting "Confirmed" replies to Stage-2 interview invite emails.
 
-Database schema rollbacks are manual: Drizzle emits plain SQL migration files in `drizzle/`. Reverse the last migration against Neon via the Neon console. Always test migrations on a Neon **branch** before applying to production — branching is free.
+1. In Google Cloud Console (same project as §4), enable **Gmail API**.
+2. OAuth consent screen → External → fill required fields → add scope `https://www.googleapis.com/auth/gmail.readonly`.
+3. Credentials → Create OAuth Client ID → Web application.
+4. Copy Client ID and Secret to `.env.local`:
+   ```
+   GMAIL_CLIENT_ID=...
+   GMAIL_CLIENT_SECRET=...
+   ```
+5. Generate a refresh token using the OAuth playground or a one-time script (documented when v0.3 starts).
 
 ---
 
-## 7. Troubleshooting
+## 7. Vercel (production deployment)
 
-| Symptom | Likely cause | Fix |
-|---|---|---|
-| `fatal: Authentication failed` on `git push` | `gh.exe` keyring not active as SnehaChouksey | `gh auth switch --user SnehaChouksey` then retry |
-| Pre-commit hook rejects every commit | Repo-local `user.name`/`user.email` don't match | Run the two `git config --local` commands in §1 |
-| `Error: connect ECONNREFUSED` from Neon | Pooled URL used for migrations | Use `DATABASE_URL_UNPOOLED` for `db:migrate` |
-| `403` from Sheets API | Sheet isn't shared with the service account | §4.5 |
-| `PERMISSION_DENIED: private_key` | `\n` in the private key got stripped | Re-paste with real newlines (or escaped `\n` inside double quotes) |
+1. <https://vercel.com> → Add New → Project → import `A4Gcollab/Recruitment-automation`.
+2. Add all env vars from `.env.local` under Settings → Environment Variables (use the Neon URL for `DATABASE_URL`, not the local one).
+3. Deploy. Copy the production URL → set as `NEXTAUTH_URL`.
+
+---
+
+## 8. UptimeRobot (free cron trigger)
+
+Vercel Hobby cron is limited to 1/hour. UptimeRobot pings our cron endpoints every 5 minutes for free.
+
+1. Create account at <https://uptimerobot.com>.
+2. Add monitors (HTTP, 5-min interval) for each cron endpoint:
+   - `https://your-app.vercel.app/api/cron/process-queue` (v0.1+)
+   - `https://your-app.vercel.app/api/cron/poll-forms` (v0.2+)
+   - `https://your-app.vercel.app/api/cron/check-reminders` (v0.3+)
+   - `https://your-app.vercel.app/api/cron/poll-replies` (v0.3+)
+   - `https://your-app.vercel.app/api/health` (uptime)
+3. Each endpoint validates a `CRON_SECRET` header — set the same secret in UptimeRobot's custom headers and Vercel env vars.
+
+---
+
+## 9. First-run checklist
+
+- [ ] `.env.local` populated.
+- [ ] `sudo service postgresql start` (or Neon connected).
+- [ ] `npm run db:migrate && npm run db:seed` ran cleanly.
+- [ ] Login works at `/login`.
+- [ ] Gmail test email sends successfully (check spam folder too).
+- [ ] Google Sheet shared with service account email.
+
+---
+
+## 10. Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| Pre-commit hook rejects commit | `git config --local user.name "SnehaChouksey"` + `user.email` |
+| `$` in bcrypt hash breaks login | Escape with `\$` in `.env.local` (e.g. `\$2a\$10\$...`) |
+| Gmail "Less secure apps" error | Use App Password, not account password (§3) |
+| Google Sheets 403 | Share the sheet with the service account email (§4.5) |
+| Email lands in spam | Check sender name isn't raw Gmail address; personalise subject line |

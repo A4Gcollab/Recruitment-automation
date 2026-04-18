@@ -1,6 +1,6 @@
 import { AuthGuard } from "@/components/auth-guard";
 
-export default function DashboardLayout({
+export default function CampaignsLayout({
   children,
 }: {
   children: React.ReactNode;

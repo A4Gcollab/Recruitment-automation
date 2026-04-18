@@ -1,19 +1,21 @@
 "use client";
 
-import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Loader2 } from "lucide-react";
 
-export function DashboardGuard({ children }: { children: React.ReactNode }) {
+export function AuthGuard({ children }: { children: React.ReactNode }) {
   const { status } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (status === "unauthenticated") {
-      router.replace("/login?callbackUrl=/dashboard");
+      const callback = encodeURIComponent(pathname || "/dashboard");
+      router.replace(`/login?callbackUrl=${callback}`);
     }
-  }, [status, router]);
+  }, [status, router, pathname]);
 
   if (status === "loading" || status === "unauthenticated") {
     return (

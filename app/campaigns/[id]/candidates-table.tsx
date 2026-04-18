@@ -1,8 +1,8 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
-import { Inbox } from "lucide-react";
+import { Inbox, Mail } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,33 +14,39 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ApiClientError, fetchCandidates } from "@/lib/api/candidates";
-import { ImportDialog, type ImportDialogProps } from "./import-dialog";
+import {
+  ApiClientError,
+  fetchCandidates,
+  type CampaignDetail,
+} from "@/lib/api/candidates";
+import type { Candidate } from "@/lib/types";
+import { SendStage1Dialog } from "./send-stage1-dialog";
 
-export const candidatesQueryKey = ["candidates"] as const;
+export function candidatesQueryKey(campaignId: string) {
+  return ["candidates", { campaign_id: campaignId }] as const;
+}
 
-export function CandidatesTable() {
-  const [importOpen, setImportOpen] = useState(false);
+export function CandidatesTable({
+  campaignId,
+  campaign,
+  onImport,
+}: {
+  campaignId: string;
+  campaign: CampaignDetail | undefined;
+  onImport: () => void;
+}) {
+  const [sendTarget, setSendTarget] = useState<Candidate | null>(null);
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
-    queryKey: candidatesQueryKey,
-    queryFn: () => fetchCandidates({ page: 1, page_size: 200 }),
+    queryKey: candidatesQueryKey(campaignId),
+    queryFn: () =>
+      fetchCandidates({ campaign_id: campaignId, page: 1, page_size: 200 }),
   });
+
+  const candidates = useMemo(() => data?.items ?? [], [data]);
 
   return (
     <>
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Candidates</h1>
-          <p className="text-sm text-muted-foreground">
-            {data
-              ? `${data.total} total · page ${data.page}`
-              : "Loading pipeline…"}
-          </p>
-        </div>
-        <Button onClick={() => setImportOpen(true)}>Import candidates</Button>
-      </div>
-
       <div className="rounded-lg border bg-card">
         <Table>
           <TableHeader>
@@ -48,8 +54,9 @@ export function CandidatesTable() {
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>LinkedIn</TableHead>
-              <TableHead>Role</TableHead>
+              <TableHead>Headline</TableHead>
               <TableHead>Stage</TableHead>
+              <TableHead className="w-[140px] text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -57,10 +64,10 @@ export function CandidatesTable() {
               <LoadingRows />
             ) : isError ? (
               <ErrorRow error={error} onRetry={() => refetch()} />
-            ) : !data || data.items.length === 0 ? (
-              <EmptyRow onImport={() => setImportOpen(true)} />
+            ) : candidates.length === 0 ? (
+              <EmptyRow onImport={onImport} />
             ) : (
-              data.items.map((candidate) => (
+              candidates.map((candidate) => (
                 <TableRow key={candidate.id}>
                   <TableCell className="font-medium">
                     {candidate.full_name}
@@ -82,11 +89,29 @@ export function CandidatesTable() {
                       <span className="italic">—</span>
                     )}
                   </TableCell>
-                  <TableCell>{candidate.role}</TableCell>
+                  <TableCell className="max-w-[220px] truncate text-muted-foreground">
+                    {candidate.headline ?? <span className="italic">—</span>}
+                  </TableCell>
                   <TableCell>
                     <span className="inline-flex items-center rounded-md bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
                       {candidate.stage}
                     </span>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={!candidate.email}
+                      title={
+                        candidate.email
+                          ? "Send the Stage-1 screening form"
+                          : "Candidate has no email on file"
+                      }
+                      onClick={() => setSendTarget(candidate)}
+                    >
+                      <Mail />
+                      Send Stage-1
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))
@@ -99,11 +124,11 @@ export function CandidatesTable() {
         <p className="text-xs text-muted-foreground">Refreshing…</p>
       ) : null}
 
-      <ImportDialog
-        open={importOpen}
-        onOpenChange={setImportOpen}
-        onImported={() => {
-          setImportOpen(false);
+      <SendStage1Dialog
+        campaign={campaign}
+        candidate={sendTarget}
+        onOpenChange={(open) => {
+          if (!open) setSendTarget(null);
         }}
       />
     </>
@@ -115,9 +140,9 @@ function LoadingRows() {
     <>
       {Array.from({ length: 5 }).map((_, idx) => (
         <TableRow key={idx}>
-          {Array.from({ length: 5 }).map((__, cellIdx) => (
+          {Array.from({ length: 6 }).map((__, cellIdx) => (
             <TableCell key={cellIdx}>
-              <Skeleton className="h-4 w-full max-w-[180px]" />
+              <Skeleton className="h-4 w-full max-w-[160px]" />
             </TableCell>
           ))}
         </TableRow>
@@ -129,13 +154,14 @@ function LoadingRows() {
 function EmptyRow({ onImport }: { onImport: () => void }) {
   return (
     <TableRow>
-      <TableCell colSpan={5}>
+      <TableCell colSpan={6}>
         <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
           <Inbox className="size-10 text-muted-foreground" aria-hidden />
           <div>
             <p className="text-base font-medium">No candidates yet</p>
             <p className="text-sm text-muted-foreground">
-              Import your first batch from a Google Sheet to get started.
+              Import applicants from a Google Sheet exported via
+              ApplicantSync.
             </p>
           </div>
           <Button onClick={onImport} variant="outline">
@@ -163,7 +189,7 @@ function ErrorRow({
 
   return (
     <TableRow>
-      <TableCell colSpan={5}>
+      <TableCell colSpan={6}>
         <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
           <p className="text-base font-medium text-destructive">{message}</p>
           <Button onClick={onRetry} variant="outline" size="sm">
@@ -174,5 +200,3 @@ function ErrorRow({
     </TableRow>
   );
 }
-
-export type { ImportDialogProps };

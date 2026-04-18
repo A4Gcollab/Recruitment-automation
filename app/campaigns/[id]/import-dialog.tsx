@@ -21,55 +21,66 @@ import {
   importCandidates,
   type ImportPayload,
 } from "@/lib/api/candidates";
-import type { ColumnMapping, ImportResult } from "@/lib/types";
+import type { ColumnMapping } from "@/lib/types";
 import { candidatesQueryKey } from "./candidates-table";
-
-export type ImportDialogProps = {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onImported?: (result: ImportResult) => void;
-};
+import { campaignQueryKey } from "./campaign-detail-view";
 
 type Step = 1 | 2 | 3;
 
-const initialMapping: ColumnMapping = {
+type MappingState = {
+  full_name: string;
+  email: string;
+  linkedin_url: string;
+  headline: string;
+  location: string;
+  application_date: string;
+  role: string;
+};
+
+const initialMapping: MappingState = {
   full_name: "Full Name",
-  role: "Role",
   email: "Email",
   linkedin_url: "LinkedIn URL",
+  headline: "Headline",
+  location: "Location",
+  application_date: "Application Date",
+  role: "",
 };
 
 export function ImportDialog({
+  campaignId,
   open,
   onOpenChange,
-  onImported,
-}: ImportDialogProps) {
+}: {
+  campaignId: string;
+  open: boolean;
+  onOpenChange: (next: boolean) => void;
+}) {
   const queryClient = useQueryClient();
   const [step, setStep] = useState<Step>(1);
   const [sheetUrl, setSheetUrl] = useState("");
-  const [campaignId, setCampaignId] = useState("");
-  const [mapping, setMapping] = useState<ColumnMapping>(initialMapping);
+  const [mapping, setMapping] = useState<MappingState>(initialMapping);
 
   useEffect(() => {
     if (!open) {
-      const reset = setTimeout(() => {
+      const t = setTimeout(() => {
         setStep(1);
         setSheetUrl("");
-        setCampaignId("");
         setMapping(initialMapping);
       }, 200);
-      return () => clearTimeout(reset);
+      return () => clearTimeout(t);
     }
   }, [open]);
 
   const mutation = useMutation({
-    mutationFn: (payload: ImportPayload) => importCandidates(payload),
+    mutationFn: (payload: ImportPayload) =>
+      importCandidates(campaignId, payload),
     onSuccess: (result) => {
       toast.success("Import complete", {
         description: `${result.imported} imported · ${result.skipped} skipped · ${result.errors.length} errors`,
       });
-      queryClient.invalidateQueries({ queryKey: candidatesQueryKey });
-      onImported?.(result);
+      queryClient.invalidateQueries({ queryKey: candidatesQueryKey(campaignId) });
+      queryClient.invalidateQueries({ queryKey: campaignQueryKey(campaignId) });
       onOpenChange(false);
     },
     onError: (err: unknown) => {
@@ -85,10 +96,8 @@ export function ImportDialog({
 
   const step1Valid =
     sheetUrl.trim().startsWith("http") &&
-    sheetUrl.includes("docs.google.com") &&
-    campaignId.trim().length > 0;
-  const step2Valid =
-    mapping.full_name.trim().length > 0 && mapping.role.trim().length > 0;
+    sheetUrl.includes("docs.google.com");
+  const step2Valid = mapping.full_name.trim().length > 0;
 
   function handlePrimary() {
     if (step === 1 && step1Valid) {
@@ -102,18 +111,21 @@ export function ImportDialog({
     if (step === 3) {
       const cleanedMapping: ColumnMapping = {
         full_name: mapping.full_name.trim(),
-        role: mapping.role.trim(),
       };
-      if (mapping.email && mapping.email.trim().length > 0) {
-        cleanedMapping.email = mapping.email.trim();
+      const optional: (keyof MappingState)[] = [
+        "email",
+        "linkedin_url",
+        "headline",
+        "location",
+        "application_date",
+        "role",
+      ];
+      for (const key of optional) {
+        const val = mapping[key].trim();
+        if (val) (cleanedMapping as Record<string, string>)[key] = val;
       }
-      if (mapping.linkedin_url && mapping.linkedin_url.trim().length > 0) {
-        cleanedMapping.linkedin_url = mapping.linkedin_url.trim();
-      }
-
       mutation.mutate({
         google_sheet_url: sheetUrl.trim(),
-        campaign_id: campaignId.trim(),
         column_mapping: cleanedMapping,
       });
     }
@@ -169,19 +181,7 @@ export function ImportDialog({
               />
               <p className="text-xs text-muted-foreground">
                 Share the sheet with the service account email (see
-                DEPLOYMENT.md).
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="campaign-id">Campaign ID</Label>
-              <Input
-                id="campaign-id"
-                placeholder="UUID of an existing campaign"
-                value={campaignId}
-                onChange={(e) => setCampaignId(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                Campaign picker lands in v0.2 — paste the UUID for now.
+                DEPLOYMENT.md). ApplicantSync exports land here.
               </p>
             </div>
           </div>
@@ -191,7 +191,9 @@ export function ImportDialog({
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
               Type the exact header text from row 1 of your sheet for each
-              field. Backend matches by header name.
+              field. Backend matches by header name. Only{" "}
+              <span className="font-medium text-foreground">Full name</span> is
+              required.
             </p>
             <MappingField
               id="map-full-name"
@@ -199,65 +201,78 @@ export function ImportDialog({
               value={mapping.full_name}
               onChange={(v) => setMapping((m) => ({ ...m, full_name: v }))}
             />
-            <MappingField
-              id="map-role"
-              label="Role column *"
-              value={mapping.role}
-              onChange={(v) => setMapping((m) => ({ ...m, role: v }))}
-            />
-            <MappingField
-              id="map-email"
-              label="Email column (optional)"
-              value={mapping.email ?? ""}
-              onChange={(v) => setMapping((m) => ({ ...m, email: v }))}
-            />
-            <MappingField
-              id="map-linkedin"
-              label="LinkedIn URL column (optional)"
-              value={mapping.linkedin_url ?? ""}
-              onChange={(v) =>
-                setMapping((m) => ({ ...m, linkedin_url: v }))
-              }
-            />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <MappingField
+                id="map-email"
+                label="Email"
+                value={mapping.email}
+                onChange={(v) => setMapping((m) => ({ ...m, email: v }))}
+              />
+              <MappingField
+                id="map-linkedin"
+                label="LinkedIn URL"
+                value={mapping.linkedin_url}
+                onChange={(v) =>
+                  setMapping((m) => ({ ...m, linkedin_url: v }))
+                }
+              />
+              <MappingField
+                id="map-headline"
+                label="Headline"
+                value={mapping.headline}
+                onChange={(v) => setMapping((m) => ({ ...m, headline: v }))}
+              />
+              <MappingField
+                id="map-location"
+                label="Location"
+                value={mapping.location}
+                onChange={(v) => setMapping((m) => ({ ...m, location: v }))}
+              />
+              <MappingField
+                id="map-appdate"
+                label="Application date"
+                value={mapping.application_date}
+                onChange={(v) =>
+                  setMapping((m) => ({ ...m, application_date: v }))
+                }
+              />
+              <MappingField
+                id="map-role"
+                label="Role (override)"
+                value={mapping.role}
+                onChange={(v) => setMapping((m) => ({ ...m, role: v }))}
+              />
+            </div>
           </div>
         ) : null}
 
         {step === 3 ? (
           <div className="space-y-3 text-sm">
             <SummaryRow label="Sheet URL" value={sheetUrl} mono />
-            <SummaryRow label="Campaign" value={campaignId} mono />
             <div className="rounded-md border bg-muted/40 p-3">
               <p className="mb-2 font-medium">Column mapping</p>
               <ul className="space-y-1 text-muted-foreground">
-                <li>
-                  full_name ←{" "}
-                  <span className="font-mono text-foreground">
-                    {mapping.full_name || "—"}
-                  </span>
-                </li>
-                <li>
-                  role ←{" "}
-                  <span className="font-mono text-foreground">
-                    {mapping.role || "—"}
-                  </span>
-                </li>
-                <li>
-                  email ←{" "}
-                  <span className="font-mono text-foreground">
-                    {mapping.email?.trim() || "(skipped)"}
-                  </span>
-                </li>
-                <li>
-                  linkedin_url ←{" "}
-                  <span className="font-mono text-foreground">
-                    {mapping.linkedin_url?.trim() || "(skipped)"}
-                  </span>
-                </li>
+                <MappingSummaryLine
+                  field="full_name"
+                  value={mapping.full_name}
+                />
+                <MappingSummaryLine field="email" value={mapping.email} />
+                <MappingSummaryLine
+                  field="linkedin_url"
+                  value={mapping.linkedin_url}
+                />
+                <MappingSummaryLine field="headline" value={mapping.headline} />
+                <MappingSummaryLine field="location" value={mapping.location} />
+                <MappingSummaryLine
+                  field="application_date"
+                  value={mapping.application_date}
+                />
+                <MappingSummaryLine field="role" value={mapping.role} />
               </ul>
             </div>
             <p className="text-xs text-muted-foreground">
-              Submitting will fetch the sheet and create candidate records.
-              Rows missing required fields are reported back as errors.
+              Submitting will fetch the sheet and create candidate records in
+              this campaign. Rows missing a full name are reported as errors.
             </p>
           </div>
         ) : null}
@@ -335,10 +350,28 @@ function SummaryRow({
   );
 }
 
+function MappingSummaryLine({
+  field,
+  value,
+}: {
+  field: string;
+  value: string;
+}) {
+  const trimmed = value.trim();
+  return (
+    <li>
+      {field} ←{" "}
+      <span className="font-mono text-foreground">
+        {trimmed || "(skipped)"}
+      </span>
+    </li>
+  );
+}
+
 function stepDescription(step: Step): string {
   switch (step) {
     case 1:
-      return "paste the sheet URL and target campaign";
+      return "paste the sheet URL";
     case 2:
       return "map sheet columns to candidate fields";
     case 3:

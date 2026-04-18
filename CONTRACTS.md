@@ -60,11 +60,59 @@ _To be published by Basil in `lib/types.ts` at start of v0.1._
 
 ### `lib/sheets/fetchRows.ts` (v0.1, Integrations)
 
-_To be published by Iris._
+Published by Iris 2026-04-17.
+
+```ts
+import type { ColumnMapping } from "@/lib/types";
+
+export type SheetRow = {
+  row_number: number;
+  full_name: string | null;
+  email: string | null;
+  linkedin_url: string | null;
+  role: string | null;
+  headline: string | null;
+  location: string | null;
+  application_date: string | null;
+  raw: Record<string, string>;
+};
+
+export type SheetFetchError = { row: number; reason: string };
+
+export type FetchSheetRowsResult = {
+  rows: SheetRow[];
+  errors: SheetFetchError[];
+  header_row: string[];
+  sheet_title: string;
+};
+
+export class SheetUnreachableError extends Error {}
+export class SheetUpstreamError extends Error {}
+
+export async function fetchSheetRows(args: {
+  url: string;
+  mapping: ColumnMapping;
+  batchSize?: number;           // default 100
+}): Promise<FetchSheetRowsResult>;
+
+export function suggestMapping(headers: string[]): Partial<ColumnMapping>;
+```
+
+Error semantics: sheet-level failures throw `SheetUnreachableError` (bad URL, missing sharing, env missing) or `SheetUpstreamError` (transient Google API error). Row-level issues go into `errors` array. Also exports `parseSheetUrl(url): { spreadsheetId, gid }` from `lib/sheets/client.ts`.
 
 ### `lib/nodemailer/transport.ts` (v0.1, Integrations)
 
-_To be published by Iris._
+Published by Iris 2026-04-17.
+
+```ts
+import type { Transporter } from "nodemailer";
+
+export function getTransport(): Transporter;
+export function getSenderAddress(): string;   // '"Sender Name" <user@gmail.com>'
+export async function verifyConnection(): Promise<boolean>;
+```
+
+Uses `GMAIL_USER` + `GMAIL_APP_PASSWORD` + `GMAIL_SENDER_NAME` env vars. Transport is cached after first call. `verifyConnection()` returns `false` on SMTP auth failure (safe for health checks). Basil's `lib/email/sender.ts` imports `getTransport()` and `getSenderAddress()` to dispatch emails.
 
 ### `lib/email/sender.ts` (v0.1, Backend)
 

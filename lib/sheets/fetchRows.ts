@@ -7,6 +7,9 @@ export type SheetRow = {
   email: string | null;
   linkedin_url: string | null;
   role: string | null;
+  headline: string | null;
+  location: string | null;
+  application_date: string | null;
   raw: Record<string, string>;
 };
 
@@ -68,6 +71,30 @@ const HEADER_ALIASES: Record<keyof ColumnMapping, string[]> = {
     "applied for",
     "applied role",
     "role applied",
+  ],
+  headline: [
+    "headline",
+    "linkedin headline",
+    "current title",
+    "current position",
+    "professional headline",
+  ],
+  location: [
+    "location",
+    "city",
+    "region",
+    "country",
+    "address",
+    "candidate location",
+  ],
+  application_date: [
+    "application date",
+    "applied on",
+    "applied date",
+    "date applied",
+    "date",
+    "submission date",
+    "applied at",
   ],
 };
 
@@ -156,13 +183,19 @@ export async function fetchSheetRows(args: {
         const role = extractCell(raw, mapping.role);
         const email = extractCell(raw, mapping.email);
         const linkedin_url = extractCell(raw, mapping.linkedin_url);
+        const headline = extractCell(raw, mapping.headline);
+        const location = extractCell(raw, mapping.location);
+        const application_date = extractCell(raw, mapping.application_date);
 
         if (!full_name && !email && !role && !linkedin_url) {
           errors.push({ row: rowNumber, reason: "empty row" });
           continue;
         }
 
-        rows.push({ row_number: rowNumber, full_name, email, linkedin_url, role, raw });
+        rows.push({
+          row_number: rowNumber, full_name, email, linkedin_url, role,
+          headline, location, application_date, raw,
+        });
       } catch (err) {
         errors.push({
           row: rowNumber,

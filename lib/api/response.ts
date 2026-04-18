@@ -19,6 +19,12 @@ export const ERR = {
   notFound: (what: string) => jsonError(404, "not_found", `${what} not found`),
   campaignNotFound: () =>
     jsonError(400, "campaign_not_found", "Unknown campaign_id — create the campaign first"),
+  candidateNotFound: () =>
+    jsonError(400, "candidate_not_found", "Unknown candidate_id"),
+  alreadySent: (msg = "Already queued/sent for today") =>
+    jsonError(400, "already_sent", msg),
+  killSwitch: () =>
+    jsonError(400, "kill_switch_active", "Email kill switch is active"),
   sheetUnreachable: (msg: string) =>
     jsonError(400, "sheet_unreachable", msg),
   sheetUpstream: (msg: string) =>

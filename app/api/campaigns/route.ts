@@ -6,7 +6,7 @@ import { campaigns, roleConfigs } from "@/db/schema";
 import { logAudit } from "@/lib/audit";
 import { ERR } from "@/lib/api/response";
 import { withAuth } from "@/lib/api/withAuth";
-import type { Campaign } from "@/lib/types";
+import { serializeCampaign } from "@/lib/serializers/campaign";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,23 +20,16 @@ const createSchema = z.object({
   interview_date: z.string().max(100).optional(),
   interview_time: z.string().max(50).optional(),
   interview_mode: z.string().max(50).optional(),
+  // v0.2 — all optional; DB defaults from lib/email/defaults fill in if omitted
+  stage1_subject: z.string().min(1).optional(),
+  stage1_body: z.string().min(1).optional(),
+  reminder_subject: z.string().min(1).optional(),
+  reminder_body: z.string().min(1).optional(),
+  interview_subject: z.string().min(1).optional(),
+  interview_body: z.string().min(1).optional(),
+  reminder_after_days: z.number().int().min(1).max(30).optional(),
+  form_response_sheet_url: z.string().url().optional(),
 });
-
-function serializeCampaign(row: typeof campaigns.$inferSelect): Campaign {
-  return {
-    id: row.id,
-    role_name: row.roleName,
-    google_form_url: row.googleFormUrl,
-    zoom_link: row.zoomLink,
-    zoom_meeting_id: row.zoomMeetingId,
-    zoom_passcode: row.zoomPasscode,
-    interview_date: row.interviewDate,
-    interview_time: row.interviewTime,
-    interview_mode: row.interviewMode,
-    status: row.status as Campaign["status"],
-    created_at: row.createdAt.toISOString(),
-  };
-}
 
 export const POST = withAuth(async (req, _ctx, session) => {
   let parsed;
@@ -60,6 +53,15 @@ export const POST = withAuth(async (req, _ctx, session) => {
       interviewDate: d.interview_date ?? null,
       interviewTime: d.interview_time ?? null,
       interviewMode: d.interview_mode ?? null,
+      // v0.2 — omit when undefined so DB column DEFAULTs apply (defaults live in lib/email/defaults.ts)
+      ...(d.stage1_subject !== undefined && { stage1Subject: d.stage1_subject }),
+      ...(d.stage1_body !== undefined && { stage1Body: d.stage1_body }),
+      ...(d.reminder_subject !== undefined && { reminderSubject: d.reminder_subject }),
+      ...(d.reminder_body !== undefined && { reminderBody: d.reminder_body }),
+      ...(d.interview_subject !== undefined && { interviewSubject: d.interview_subject }),
+      ...(d.interview_body !== undefined && { interviewBody: d.interview_body }),
+      ...(d.reminder_after_days !== undefined && { reminderAfterDays: d.reminder_after_days }),
+      formResponseSheetUrl: d.form_response_sheet_url ?? null,
     })
     .returning();
 

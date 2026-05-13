@@ -12,15 +12,22 @@ if (!url) {
 }
 
 const STAGES = [
+  // v0.1 — legacy stages, kept for backward compatibility with existing audit log entries
   { id: "imported", label: "Imported", position: 1 },
-  { id: "good_fit", label: "Good Fit", position: 2 },
+  { id: "good_fit", label: "Good Fit (legacy v0.1)", position: 2 },
   { id: "stage1_sent", label: "Stage-1 Sent", position: 3 },
   { id: "form_submitted", label: "Form Submitted", position: 4 },
-  { id: "evaluated", label: "Evaluated", position: 5 },
+  { id: "evaluated", label: "Evaluated (legacy v0.1)", position: 5 },
   { id: "reminder_sent", label: "Reminder Sent", position: 6 },
-  { id: "stage2_sent", label: "Stage-2 Sent", position: 7 },
+  { id: "stage2_sent", label: "Stage-2 Sent (legacy v0.1)", position: 7 },
   { id: "confirmed", label: "Confirmed", position: 8 },
-  { id: "rejected", label: "Rejected", position: 9 },
+  { id: "rejected", label: "Rejected (legacy v0.1)", position: 9 },
+  // v0.2 — active stage machine per REQUIREMENTS_v2.2 §6
+  { id: "evaluated_screen1", label: "Evaluated — Screen 1 (Good Fit)", position: 10 },
+  { id: "rejected_screen1", label: "Rejected — Screen 1", position: 11 },
+  { id: "evaluated_screen2", label: "Evaluated — Screen 2 (Call for Interview)", position: 12 },
+  { id: "rejected_screen2", label: "Rejected — Screen 2", position: 13 },
+  { id: "interview_link_sent", label: "Interview Link Sent", position: 14 },
 ] as const;
 
 async function run() {

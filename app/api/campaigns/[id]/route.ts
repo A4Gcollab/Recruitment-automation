@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { campaigns, candidates } from "@/db/schema";
 import { ERR } from "@/lib/api/response";
 import { withAuth } from "@/lib/api/withAuth";
-import type { Campaign } from "@/lib/types";
+import { serializeCampaign } from "@/lib/serializers/campaign";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,20 +26,8 @@ export const GET = withAuth<Ctx>(async (_req: NextRequest, ctx) => {
     .where(eq(candidates.campaignId, id))
     .groupBy(candidates.stage);
 
-  const body: Campaign & { counts_by_stage: { stage: string; count: number }[] } = {
-    id: campaign.id,
-    role_name: campaign.roleName,
-    google_form_url: campaign.googleFormUrl,
-    zoom_link: campaign.zoomLink,
-    zoom_meeting_id: campaign.zoomMeetingId,
-    zoom_passcode: campaign.zoomPasscode,
-    interview_date: campaign.interviewDate,
-    interview_time: campaign.interviewTime,
-    interview_mode: campaign.interviewMode,
-    status: campaign.status as Campaign["status"],
-    created_at: campaign.createdAt.toISOString(),
+  return NextResponse.json({
+    ...serializeCampaign(campaign),
     counts_by_stage: countsByStage.map((r) => ({ stage: r.stage, count: r.count })),
-  };
-
-  return NextResponse.json(body);
+  });
 });

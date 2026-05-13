@@ -5,12 +5,18 @@ export type SheetRow = {
   row_number: number;
   full_name: string | null;
   email: string | null;
+  phone: string | null;                  // v0.2 — ApplicantSync "Phone"
   linkedin_url: string | null;
-  role: string | null;
-  headline: string | null;
+  role: string | null;                   // multi-role sheets; null for ApplicantSync
+  headline: string | null;               // LinkedIn profile headline; null for ApplicantSync
+  current_title: string | null;          // v0.2 — ApplicantSync "Title" (candidate's current job)
+  current_company: string | null;        // v0.2 — ApplicantSync "Company"
+  school: string | null;                 // v0.2 — ApplicantSync "School"
   location: string | null;
-  application_date: string | null;
-  raw: Record<string, string>;
+  application_date: string | null;       // ApplicantSync "Applied Date"
+  resume_url: string | null;             // v0.2 — ApplicantSync "Resume URL"
+  applicantsync_score: string | null;    // v0.2 — ApplicantSync "Screening Score", e.g. "9/11"
+  raw: Record<string, string>;           // every column verbatim (incl. "Status" + LinkedIn screening-Q answers → Basil's linkedin_data JSONB)
 };
 
 export type SheetFetchError = { row: number; reason: string };
@@ -54,6 +60,15 @@ const HEADER_ALIASES: Record<keyof ColumnMapping, string[]> = {
     "email id",
     "contact email",
   ],
+  phone: [
+    "phone",
+    "phone number",
+    "mobile",
+    "mobile number",
+    "contact number",
+    "contact",
+    "cell",
+  ],
   linkedin_url: [
     "linkedin",
     "linkedin url",
@@ -63,21 +78,44 @@ const HEADER_ALIASES: Record<keyof ColumnMapping, string[]> = {
     "profile link",
     "profile",
   ],
+  // v0.2: "title" + "job title" moved to current_title — ApplicantSync's
+  // "Title" header is the candidate's current job title, not the role applied.
   role: [
     "role",
     "position",
-    "job title",
-    "title",
     "applied for",
     "applied role",
     "role applied",
   ],
+  // v0.2: "current title" + "current position" moved to current_title.
+  // headline retained for LinkedIn-headline-specific imports (legacy v2.1).
   headline: [
     "headline",
     "linkedin headline",
+    "professional headline",
+  ],
+  current_title: [
+    "title",
+    "job title",
     "current title",
     "current position",
-    "professional headline",
+    "current job",
+    "current role",
+  ],
+  current_company: [
+    "company",
+    "current company",
+    "employer",
+    "current employer",
+    "organization",
+    "organisation",
+  ],
+  school: [
+    "school",
+    "university",
+    "college",
+    "alma mater",
+    "education",
   ],
   location: [
     "location",
@@ -95,6 +133,23 @@ const HEADER_ALIASES: Record<keyof ColumnMapping, string[]> = {
     "date",
     "submission date",
     "applied at",
+  ],
+  resume_url: [
+    "resume",
+    "resume url",
+    "resume link",
+    "cv",
+    "cv url",
+    "cv link",
+  ],
+  applicantsync_score: [
+    "screening score",
+    "applicantsync score",
+    "score",
+    "match score",
+    "jd match",
+    "jd match score",
+    "jd-match score",
   ],
 };
 
@@ -182,10 +237,16 @@ export async function fetchSheetRows(args: {
         const full_name = extractCell(raw, mapping.full_name);
         const role = extractCell(raw, mapping.role);
         const email = extractCell(raw, mapping.email);
+        const phone = extractCell(raw, mapping.phone);
         const linkedin_url = extractCell(raw, mapping.linkedin_url);
         const headline = extractCell(raw, mapping.headline);
+        const current_title = extractCell(raw, mapping.current_title);
+        const current_company = extractCell(raw, mapping.current_company);
+        const school = extractCell(raw, mapping.school);
         const location = extractCell(raw, mapping.location);
         const application_date = extractCell(raw, mapping.application_date);
+        const resume_url = extractCell(raw, mapping.resume_url);
+        const applicantsync_score = extractCell(raw, mapping.applicantsync_score);
 
         if (!full_name && !email && !role && !linkedin_url) {
           errors.push({ row: rowNumber, reason: "empty row" });
@@ -193,8 +254,9 @@ export async function fetchSheetRows(args: {
         }
 
         rows.push({
-          row_number: rowNumber, full_name, email, linkedin_url, role,
-          headline, location, application_date, raw,
+          row_number: rowNumber, full_name, email, phone, linkedin_url, role,
+          headline, current_title, current_company, school, location,
+          application_date, resume_url, applicantsync_score, raw,
         });
       } catch (err) {
         errors.push({

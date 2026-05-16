@@ -24,20 +24,21 @@ function getJwt(): JWT {
   return cachedJwt;
 }
 
-const SHEET_URL_RE =
-  /\/spreadsheets\/d\/([a-zA-Z0-9_-]+)(?:\/.*?(?:[?&#]gid=(\d+))?)?/;
+const SHEET_ID_RE = /\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/;
+const SHEET_GID_RE = /[?&#]gid=(\d+)/;
 
 export function parseSheetUrl(url: string): {
   spreadsheetId: string;
   gid: number;
 } {
-  const match = url.match(SHEET_URL_RE);
-  if (!match?.[1]) {
+  const idMatch = url.match(SHEET_ID_RE);
+  if (!idMatch?.[1]) {
     throw new Error(`Cannot extract spreadsheet ID from URL: ${url}`);
   }
+  const gidMatch = url.match(SHEET_GID_RE);
   return {
-    spreadsheetId: match[1],
-    gid: match[2] ? Number(match[2]) : 0,
+    spreadsheetId: idMatch[1],
+    gid: gidMatch ? Number(gidMatch[1]) : 0,
   };
 }
 

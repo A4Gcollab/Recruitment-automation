@@ -25,12 +25,42 @@ const bodySchema = z.object({
     full_name: z.string().min(1),
     role: z.string().min(1).optional(),
     email: z.string().min(1).optional(),
+    phone: z.string().min(1).optional(),
     linkedin_url: z.string().min(1).optional(),
     headline: z.string().min(1).optional(),
+    current_title: z.string().min(1).optional(),
+    current_company: z.string().min(1).optional(),
+    school: z.string().min(1).optional(),
     location: z.string().min(1).optional(),
     application_date: z.string().min(1).optional(),
+    resume_url: z.string().min(1).optional(),
+    applicantsync_score: z.string().min(1).optional(),
   }),
 });
+
+/** Build the linkedin_data bag: every cell in row.raw whose header is NOT
+ *  one of the columns the typed mapping already consumed. Keys are verbatim
+ *  sheet headers; values are trimmed strings. Empty/whitespace-only cells
+ *  are dropped so the bag stays compact. Default for a row with no extras: {}. */
+function buildLinkedinData(
+  row: { raw: Record<string, string> },
+  mapping: Record<string, string | undefined>,
+): Record<string, string> {
+  const consumedHeaders = new Set<string>();
+  for (const header of Object.values(mapping)) {
+    if (typeof header === "string" && header.length > 0) {
+      consumedHeaders.add(header);
+    }
+  }
+  const bag: Record<string, string> = {};
+  for (const [header, value] of Object.entries(row.raw)) {
+    if (consumedHeaders.has(header)) continue;
+    const v = String(value ?? "").trim();
+    if (v === "") continue;
+    bag[header] = v;
+  }
+  return bag;
+}
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -135,14 +165,18 @@ export const POST = withAuth<Ctx>(async (req: NextRequest, ctx, session) => {
           fullName: norm(row.full_name)!,
           email: norm(row.email),
           linkedinUrl: norm(row.linkedin_url),
-          headline: norm(row.raw["headline"] ?? row.raw["Headline"] ?? null),
-          location: norm(row.raw["location"] ?? row.raw["Location"] ?? null),
-          applicationDate: norm(
-            row.raw["application_date"] ??
-              row.raw["Application Date"] ??
-              row.raw["application date"] ??
-              null,
-          ),
+          headline: norm(row.headline),
+          location: norm(row.location),
+          applicationDate: norm(row.application_date),
+          // v0.2 — ApplicantSync extras lifted directly from SheetRow.
+          phone: norm(row.phone),
+          currentTitle: norm(row.current_title),
+          currentCompany: norm(row.current_company),
+          school: norm(row.school),
+          resumeUrl: norm(row.resume_url),
+          applicantsyncScore: norm(row.applicantsync_score),
+          // v0.2 — every non-standard column verbatim. Defaults to {} when no extras.
+          linkedinData: buildLinkedinData(row, column_mapping),
           campaignId,
           googleSheetRow: row.row_number,
         })),

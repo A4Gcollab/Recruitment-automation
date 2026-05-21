@@ -1,10 +1,19 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Inbox, Mail } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  Download,
+  FileUp,
+  Inbox,
+  Loader2,
+  Mail,
+  Send,
+} from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -16,10 +25,15 @@ import {
 } from "@/components/ui/table";
 import {
   ApiClientError,
+  exportCandidatesUrl,
   fetchCandidates,
+  importEvaluations,
   type CampaignDetail,
+  type Candidate,
+  type EvaluationImportResult,
 } from "@/lib/api/candidates";
-import type { Candidate } from "@/lib/types";
+import { campaignQueryKey } from "./campaign-detail-view";
+import { SendBulkDialog } from "./send-bulk-dialog";
 import { SendStage1Dialog } from "./send-stage1-dialog";
 
 export function candidatesQueryKey(campaignId: string) {
@@ -35,7 +49,11 @@ export function CandidatesTable({
   campaign: CampaignDetail | undefined;
   onImport: () => void;
 }) {
+  const queryClient = useQueryClient();
   const [sendTarget, setSendTarget] = useState<Candidate | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkSendOpen, setBulkSendOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: candidatesQueryKey(campaignId),
@@ -43,19 +61,195 @@ export function CandidatesTable({
       fetchCandidates({ campaign_id: campaignId, page: 1, page_size: 200 }),
   });
 
-  const candidates = useMemo(() => data?.items ?? [], [data]);
+  const candidates = useMemo<Candidate[]>(() => data?.items ?? [], [data]);
+
+  // Selection helpers
+  const selectedCount = selected.size;
+  const allSelected =
+    candidates.length > 0 && candidates.every((c) => selected.has(c.id));
+  const headerCheckState: boolean | "indeterminate" =
+    selectedCount === 0
+      ? false
+      : allSelected
+        ? true
+        : "indeterminate";
+
+  function toggleOne(id: string, next: boolean) {
+    setSelected((prev) => {
+      const updated = new Set(prev);
+      if (next) updated.add(id);
+      else updated.delete(id);
+      return updated;
+    });
+  }
+
+  function toggleAll(next: boolean) {
+    if (next) setSelected(new Set(candidates.map((c) => c.id)));
+    else setSelected(new Set());
+  }
+
+  function clearSelection() {
+    setSelected(new Set());
+  }
+
+  // Bulk send eligibility — every selected row must be good_fit and have email.
+  const selectedCandidates = useMemo(
+    () => candidates.filter((c) => selected.has(c.id)),
+    [candidates, selected],
+  );
+  const allSelectedGoodFit =
+    selectedCandidates.length > 0 &&
+    selectedCandidates.every((c) => c.verdict === "good_fit" && !!c.email);
+
+  // ── Import evaluations (multipart upload) ───────────────────────────────
+  const importMutation = useMutation({
+    mutationFn: (file: File) => importEvaluations(campaignId, file, "screen1"),
+    onSuccess: (result: EvaluationImportResult) => {
+      const unmatched = result.unmatched.length;
+      toast.success("Evaluations imported", {
+        description: `${result.updated} candidate${result.updated === 1 ? "" : "s"} updated · ${result.matched} matched${unmatched ? ` · ${unmatched} unmatched` : ""}.`,
+      });
+      queryClient.invalidateQueries({
+        queryKey: candidatesQueryKey(campaignId),
+      });
+      queryClient.invalidateQueries({ queryKey: campaignQueryKey(campaignId) });
+    },
+    onError: (err: unknown) => {
+      toast.error("Import failed", { description: describe(err) });
+    },
+    onSettled: () => {
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    },
+  });
+
+  function onImportClick() {
+    fileInputRef.current?.click();
+  }
+
+  function onFilePicked(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    importMutation.mutate(file);
+  }
+
+  // ── Export for ChatGPT (direct browser download) ────────────────────────
+  function onExportClick() {
+    // Anchor with download attribute → server-issued Content-Disposition
+    // filename wins, but we set a fallback so the link works even if the
+    // server omits the header (e.g. during dev/error states).
+    const a = document.createElement("a");
+    a.href = exportCandidatesUrl(campaignId);
+    a.rel = "noreferrer";
+    a.download = ""; // empty = use server-provided filename
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
+  // ── Render ──────────────────────────────────────────────────────────────
+  const totalCount = candidates.length;
+  const hasSelection = selectedCount > 0;
 
   return (
     <>
+      {/* Bulk action toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/30 px-3 py-2">
+        <div className="flex items-center gap-3 text-sm">
+          <span className="text-muted-foreground">
+            {totalCount} candidate{totalCount === 1 ? "" : "s"}
+            {hasSelection ? ` · ${selectedCount} selected` : ""}
+          </span>
+          {hasSelection ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={clearSelection}
+            >
+              Clear selection
+            </Button>
+          ) : null}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onExportClick}
+            disabled={totalCount === 0}
+            title={
+              totalCount === 0
+                ? "Import candidates before exporting"
+                : "Download an XLSX of candidates for ChatGPT evaluation"
+            }
+          >
+            <Download />
+            Export for ChatGPT (XLSX)
+          </Button>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onImportClick}
+            disabled={importMutation.isPending}
+            title="Upload the XLSX ChatGPT filled in with verdict + reason"
+          >
+            {importMutation.isPending ? (
+              <Loader2 className="animate-spin" />
+            ) : (
+              <FileUp />
+            )}
+            {importMutation.isPending
+              ? "Importing…"
+              : "Import evaluations (XLSX)"}
+          </Button>
+
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => setBulkSendOpen(true)}
+            disabled={!hasSelection || !allSelectedGoodFit}
+            title={bulkSendTooltip({
+              hasSelection,
+              allSelectedGoodFit,
+              selectedCount,
+            })}
+          >
+            <Send />
+            Send Google Form to selected
+            {hasSelection ? ` (${selectedCount})` : ""}
+          </Button>
+        </div>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          className="hidden"
+          onChange={onFilePicked}
+        />
+      </div>
+
       <div className="rounded-lg border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[40px]">
+                <Checkbox
+                  aria-label="Select all candidates"
+                  checked={headerCheckState}
+                  onCheckedChange={toggleAll}
+                  disabled={candidates.length === 0}
+                />
+              </TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>LinkedIn</TableHead>
-              <TableHead>Headline</TableHead>
               <TableHead>Stage</TableHead>
+              <TableHead>Verdict</TableHead>
+              <TableHead>Sent</TableHead>
               <TableHead className="w-[140px] text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -68,7 +262,19 @@ export function CandidatesTable({
               <EmptyRow onImport={onImport} />
             ) : (
               candidates.map((candidate) => (
-                <TableRow key={candidate.id}>
+                <TableRow
+                  key={candidate.id}
+                  data-state={selected.has(candidate.id) ? "selected" : undefined}
+                >
+                  <TableCell>
+                    <Checkbox
+                      aria-label={`Select ${candidate.full_name}`}
+                      checked={selected.has(candidate.id)}
+                      onCheckedChange={(next) =>
+                        toggleOne(candidate.id, next)
+                      }
+                    />
+                  </TableCell>
                   <TableCell className="font-medium">
                     {candidate.full_name}
                   </TableCell>
@@ -89,13 +295,16 @@ export function CandidatesTable({
                       <span className="italic">—</span>
                     )}
                   </TableCell>
-                  <TableCell className="max-w-[220px] truncate text-muted-foreground">
-                    {candidate.headline ?? <span className="italic">—</span>}
-                  </TableCell>
                   <TableCell>
                     <span className="inline-flex items-center rounded-md bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
                       {candidate.stage}
                     </span>
+                  </TableCell>
+                  <TableCell>
+                    <VerdictChip verdict={candidate.verdict} />
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {formatSentAt(candidate.stage1_sent_at)}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button
@@ -131,8 +340,67 @@ export function CandidatesTable({
           if (!open) setSendTarget(null);
         }}
       />
+
+      <SendBulkDialog
+        campaignId={campaignId}
+        open={bulkSendOpen}
+        onOpenChange={setBulkSendOpen}
+        candidates={selectedCandidates}
+        onSent={clearSelection}
+      />
     </>
   );
+}
+
+function bulkSendTooltip({
+  hasSelection,
+  allSelectedGoodFit,
+  selectedCount,
+}: {
+  hasSelection: boolean;
+  allSelectedGoodFit: boolean;
+  selectedCount: number;
+}): string {
+  if (!hasSelection) return "Select one or more candidates first.";
+  if (!allSelectedGoodFit)
+    return `${selectedCount} selected, but not all are marked Good Fit with an email on file. Import evaluations first.`;
+  return `Queue Stage-1 emails for ${selectedCount} candidate${selectedCount === 1 ? "" : "s"}.`;
+}
+
+function VerdictChip({ verdict }: { verdict: Candidate["verdict"] }) {
+  if (verdict === "good_fit") {
+    return (
+      <span className="inline-flex items-center rounded-md bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+        Good Fit
+      </span>
+    );
+  }
+  if (verdict === "not_fit") {
+    return (
+      <span className="inline-flex items-center rounded-md bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700 dark:bg-rose-950 dark:text-rose-300">
+        Not Fit
+      </span>
+    );
+  }
+  return <span className="text-xs italic text-muted-foreground">—</span>;
+}
+
+function formatSentAt(iso: string | null): React.ReactNode {
+  if (!iso) return <span className="italic">—</span>;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return <span className="italic">—</span>;
+  // "May 21, 14:32" — locale-stable short format
+  const month = d.toLocaleString("en-US", { month: "short" });
+  const day = d.getDate();
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${month} ${day}, ${hh}:${mm}`;
+}
+
+function describe(err: unknown): string {
+  if (err instanceof ApiClientError) return err.message;
+  if (err instanceof Error) return err.message;
+  return "Unknown error.";
 }
 
 function LoadingRows() {
@@ -140,7 +408,7 @@ function LoadingRows() {
     <>
       {Array.from({ length: 5 }).map((_, idx) => (
         <TableRow key={idx}>
-          {Array.from({ length: 6 }).map((__, cellIdx) => (
+          {Array.from({ length: 8 }).map((__, cellIdx) => (
             <TableCell key={cellIdx}>
               <Skeleton className="h-4 w-full max-w-[160px]" />
             </TableCell>
@@ -154,7 +422,7 @@ function LoadingRows() {
 function EmptyRow({ onImport }: { onImport: () => void }) {
   return (
     <TableRow>
-      <TableCell colSpan={6}>
+      <TableCell colSpan={8}>
         <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
           <Inbox className="size-10 text-muted-foreground" aria-hidden />
           <div>
@@ -189,7 +457,7 @@ function ErrorRow({
 
   return (
     <TableRow>
-      <TableCell colSpan={6}>
+      <TableCell colSpan={8}>
         <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
           <p className="text-base font-medium text-destructive">{message}</p>
           <Button onClick={onRetry} variant="outline" size="sm">

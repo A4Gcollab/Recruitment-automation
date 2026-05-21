@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   ApiClientError,
   createCampaign,
@@ -23,7 +24,34 @@ import {
 } from "@/lib/api/candidates";
 import { campaignsQueryKey } from "./campaign-list";
 
-const emptyForm: CreateCampaignPayload = {
+// Sensible default Stage-1 template so HR can hit Save with no edits.
+// Backend has its own defaults for reminder + interview bodies (CONTRACTS §5
+// `lib/email/defaults.ts`); we only surface Stage-1 for today's MVP.
+const DEFAULT_STAGE1_SUBJECT =
+  "Next Step — Stage-1 Screening Form | {{role_name}} | Omysha Foundation";
+
+const DEFAULT_STAGE1_BODY = `Dear {{name}},
+
+Thank you for applying. As the next step, please fill out our short screening form so we can learn more about your background and availability:
+
+{{form_link}}
+
+Please complete it by {{deadline}}.
+
+Warm regards,
+Omysha Foundation — HR Team`;
+
+const DEFAULT_REMINDER_DAYS = 3;
+
+type FormState = CreateCampaignPayload & {
+  // make string-typed for the form; we strip empties at submit time
+  stage1_subject: string;
+  stage1_body: string;
+  reminder_after_days: number;
+  form_response_sheet_url: string;
+};
+
+const emptyForm: FormState = {
   role_name: "",
   google_form_url: "",
   zoom_link: "",
@@ -32,6 +60,10 @@ const emptyForm: CreateCampaignPayload = {
   interview_date: "",
   interview_time: "",
   interview_mode: "Zoom",
+  stage1_subject: DEFAULT_STAGE1_SUBJECT,
+  stage1_body: DEFAULT_STAGE1_BODY,
+  reminder_after_days: DEFAULT_REMINDER_DAYS,
+  form_response_sheet_url: "",
 };
 
 export function CreateCampaignDialog({
@@ -42,11 +74,15 @@ export function CreateCampaignDialog({
   onOpenChange: (next: boolean) => void;
 }) {
   const queryClient = useQueryClient();
-  const [form, setForm] = useState<CreateCampaignPayload>(emptyForm);
+  const [form, setForm] = useState<FormState>(emptyForm);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
 
   useEffect(() => {
     if (!open) {
-      const t = setTimeout(() => setForm(emptyForm), 200);
+      const t = setTimeout(() => {
+        setForm(emptyForm);
+        setTemplatesOpen(false);
+      }, 200);
       return () => clearTimeout(t);
     }
   }, [open]);
@@ -76,7 +112,8 @@ export function CreateCampaignDialog({
     const payload: CreateCampaignPayload = {
       role_name: form.role_name.trim(),
     };
-    const optional: (keyof CreateCampaignPayload)[] = [
+
+    const optionalStringKeys: (keyof FormState)[] = [
       "google_form_url",
       "zoom_link",
       "zoom_meeting_id",
@@ -84,11 +121,26 @@ export function CreateCampaignDialog({
       "interview_date",
       "interview_time",
       "interview_mode",
+      "stage1_subject",
+      "stage1_body",
+      "form_response_sheet_url",
     ];
-    for (const key of optional) {
-      const val = form[key]?.trim();
-      if (val) (payload as Record<string, string>)[key] = val;
+    const target = payload as unknown as Record<string, string>;
+    for (const key of optionalStringKeys) {
+      const val = (form[key] as string | undefined)?.trim();
+      if (val) target[key] = val;
     }
+
+    // reminder_after_days — only send if user changed it from default-empty;
+    // backend has its own default of 3, but explicitly forwarding lets HR
+    // override on a per-campaign basis.
+    if (
+      Number.isFinite(form.reminder_after_days) &&
+      form.reminder_after_days > 0
+    ) {
+      payload.reminder_after_days = form.reminder_after_days;
+    }
+
     mutation.mutate(payload);
   }
 
@@ -103,12 +155,12 @@ export function CreateCampaignDialog({
         onOpenChange(next);
       }}
     >
-      <DialogContent className="sm:max-w-xl">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Create campaign</DialogTitle>
           <DialogDescription>
-            One campaign per hiring cycle / role. Interview details can be
-            updated later.
+            One campaign per hiring cycle / role. Interview details and email
+            templates can be edited later.
           </DialogDescription>
         </DialogHeader>
 
@@ -182,6 +234,96 @@ export function CreateCampaignDialog({
               placeholder="3:00 PM IST"
               disabled={pending}
             />
+          </div>
+
+          {/* Email templates + reminder cadence — collapsed by default */}
+          <div className="rounded-md border bg-muted/20">
+            <button
+              type="button"
+              className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm font-medium hover:bg-muted/40"
+              onClick={() => setTemplatesOpen((s) => !s)}
+              aria-expanded={templatesOpen}
+            >
+              <span className="flex items-center gap-2">
+                {templatesOpen ? (
+                  <ChevronDown className="size-4" aria-hidden />
+                ) : (
+                  <ChevronRight className="size-4" aria-hidden />
+                )}
+                Email template &amp; reminders (optional)
+              </span>
+              <span className="text-xs font-normal text-muted-foreground">
+                {templatesOpen ? "" : "Defaults will be used"}
+              </span>
+            </button>
+
+            {templatesOpen ? (
+              <div className="space-y-4 border-t px-3 py-4">
+                <Field
+                  id="stage1_subject"
+                  label="Stage-1 email subject"
+                  value={form.stage1_subject}
+                  onChange={(v) => setForm({ ...form, stage1_subject: v })}
+                  disabled={pending}
+                />
+
+                <div className="space-y-2">
+                  <Label htmlFor="stage1_body">Stage-1 email body</Label>
+                  <Textarea
+                    id="stage1_body"
+                    value={form.stage1_body}
+                    onChange={(e) =>
+                      setForm({ ...form, stage1_body: e.target.value })
+                    }
+                    rows={8}
+                    disabled={pending}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Merge fields: <code>{`{{name}}`}</code>,{" "}
+                    <code>{`{{form_link}}`}</code>,{" "}
+                    <code>{`{{deadline}}`}</code>,{" "}
+                    <code>{`{{role_name}}`}</code>.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="reminder_after_days">
+                      Reminder after (days)
+                    </Label>
+                    <Input
+                      id="reminder_after_days"
+                      type="number"
+                      min={1}
+                      max={30}
+                      value={form.reminder_after_days}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          reminder_after_days: Number(e.target.value) || 0,
+                        })
+                      }
+                      disabled={pending}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Default 3 days. One reminder per candidate.
+                    </p>
+                  </div>
+
+                  <Field
+                    id="form_response_sheet_url"
+                    label="Form response sheet URL"
+                    type="url"
+                    value={form.form_response_sheet_url}
+                    onChange={(v) =>
+                      setForm({ ...form, form_response_sheet_url: v })
+                    }
+                    placeholder="https://docs.google.com/spreadsheets/…"
+                    disabled={pending}
+                  />
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <DialogFooter className="gap-2 sm:justify-end">

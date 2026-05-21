@@ -17,9 +17,9 @@ import {
   ApiClientError,
   sendEmail,
   type CampaignDetail,
+  type Candidate,
   type SendEmailPayload,
 } from "@/lib/api/candidates";
-import type { Candidate } from "@/lib/types";
 import { candidatesQueryKey } from "./candidates-table";
 
 export function SendStage1Dialog({
@@ -38,7 +38,7 @@ export function SendStage1Dialog({
     mutationFn: (payload: SendEmailPayload) => sendEmail(payload),
     onSuccess: (result) => {
       toast.success("Stage-1 email queued", {
-        description: `Dispatcher will send it within the 9am–6pm IST window. Idempotency key: ${result.idempotency_key}`,
+        description: `Dispatcher will send it within the configured IST sending window. Idempotency key: ${result.idempotency_key}`,
       });
       if (candidate) {
         queryClient.invalidateQueries({
@@ -76,8 +76,8 @@ export function SendStage1Dialog({
         <DialogHeader>
           <DialogTitle>Send Stage-1 screening form</DialogTitle>
           <DialogDescription>
-            Email is queued and dispatched within the 9am–6pm IST sending
-            window with a 30–60s gap between sends.
+            Email is queued and dispatched within the configured IST sending
+            window with a small gap between sends.
           </DialogDescription>
         </DialogHeader>
 

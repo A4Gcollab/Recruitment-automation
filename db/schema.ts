@@ -11,6 +11,15 @@ import {
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
+import {
+  DEFAULT_INTERVIEW_BODY,
+  DEFAULT_INTERVIEW_SUBJECT,
+  DEFAULT_REMINDER_AFTER_DAYS,
+  DEFAULT_REMINDER_BODY,
+  DEFAULT_REMINDER_SUBJECT,
+  DEFAULT_STAGE1_BODY,
+  DEFAULT_STAGE1_SUBJECT,
+} from "@/lib/email/defaults";
 
 export const campaigns = pgTable("campaigns", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -23,6 +32,15 @@ export const campaigns = pgTable("campaigns", {
   interviewTime: varchar("interview_time", { length: 50 }),
   interviewMode: varchar("interview_mode", { length: 50 }),
   status: varchar("status", { length: 50 }).notNull().default("active"),
+  // v0.2 — per-campaign editable email templates; defaults seeded from lib/email/defaults
+  stage1Subject: text("stage1_subject").notNull().default(DEFAULT_STAGE1_SUBJECT),
+  stage1Body: text("stage1_body").notNull().default(DEFAULT_STAGE1_BODY),
+  reminderSubject: text("reminder_subject").notNull().default(DEFAULT_REMINDER_SUBJECT),
+  reminderBody: text("reminder_body").notNull().default(DEFAULT_REMINDER_BODY),
+  interviewSubject: text("interview_subject").notNull().default(DEFAULT_INTERVIEW_SUBJECT),
+  interviewBody: text("interview_body").notNull().default(DEFAULT_INTERVIEW_BODY),
+  reminderAfterDays: integer("reminder_after_days").notNull().default(DEFAULT_REMINDER_AFTER_DAYS),
+  formResponseSheetUrl: text("form_response_sheet_url"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -57,6 +75,26 @@ export const candidates = pgTable(
     emailEnriched: boolean("email_enriched").notNull().default(false),
     notes: text("notes"),
     googleSheetRow: integer("google_sheet_row"),
+    // v0.2 — extra ApplicantSync fields
+    phone: varchar("phone", { length: 50 }),
+    currentTitle: varchar("current_title", { length: 255 }),
+    currentCompany: varchar("current_company", { length: 255 }),
+    school: varchar("school", { length: 255 }),
+    resumeUrl: text("resume_url"),
+    applicantsyncScore: varchar("applicantsync_score", { length: 20 }),
+    // v0.2 — JSONB bag of non-standard sheet columns; default {} (never null)
+    linkedinData: jsonb("linkedin_data")
+      .$type<Record<string, string>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    // v0.2 — ChatGPT verdicts (Screen-1 / Screen-2)
+    verdict: varchar("verdict", { length: 20 }),
+    reason: text("reason"),
+    interviewVerdict: varchar("interview_verdict", { length: 20 }),
+    interviewReason: text("interview_reason"),
+    // v0.2 — reminder timing
+    stage1SentAt: timestamp("stage1_sent_at", { withTimezone: true }),
+    reminderSentAt: timestamp("reminder_sent_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -66,6 +104,16 @@ export const candidates = pgTable(
     emailUniqIdx: uniqueIndex("candidates_email_campaign_uniq")
       .on(t.email, t.campaignId)
       .where(sql`${t.email} IS NOT NULL`),
+    // v0.2 — supports reminder cron scan
+    reminderScanIdx: index("candidates_reminder_scan_idx")
+      .on(t.stage1SentAt)
+      .where(sql`${t.stage} = 'stage1_sent' AND ${t.reminderSentAt} IS NULL`),
+    // v0.2 — supports bulk-send precondition checks + filter chips
+    verdictIdx: index("candidates_verdict_idx").on(t.campaignId, t.verdict),
+    interviewVerdictIdx: index("candidates_interview_verdict_idx").on(
+      t.campaignId,
+      t.interviewVerdict,
+    ),
   }),
 );
 
@@ -102,6 +150,35 @@ export const stages = pgTable("stages", {
   position: integer("position").notNull(),
 });
 
+// v0.2 — one row per Google Form submission; matched back to candidate by email
+export const formResponses = pgTable(
+  "form_responses",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    candidateId: uuid("candidate_id")
+      .notNull()
+      .references(() => candidates.id, { onDelete: "cascade" }),
+    campaignId: uuid("campaign_id")
+      .notNull()
+      .references(() => campaigns.id, { onDelete: "cascade" }),
+    responses: jsonb("responses")
+      .$type<Record<string, string>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    candidateIdx: index("form_responses_candidate_id_idx").on(t.candidateId),
+    campaignIdx: index("form_responses_campaign_id_idx").on(t.campaignId),
+    // dedup key for pull-responses upsert (same submission re-pulled = no-op)
+    candidateSubmittedUniq: uniqueIndex("form_responses_candidate_submitted_uniq").on(
+      t.candidateId,
+      t.submittedAt,
+    ),
+  }),
+);
+
 export const auditLog = pgTable(
   "audit_log",
   {
@@ -131,3 +208,5 @@ export type EmailQueueRow = typeof emailQueue.$inferSelect;
 export type NewEmailQueueRow = typeof emailQueue.$inferInsert;
 export type StageRow = typeof stages.$inferSelect;
 export type AuditLogRow = typeof auditLog.$inferSelect;
+export type FormResponseRow = typeof formResponses.$inferSelect;
+export type NewFormResponseRow = typeof formResponses.$inferInsert;

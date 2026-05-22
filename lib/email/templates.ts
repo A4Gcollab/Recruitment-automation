@@ -4,16 +4,68 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+// Substitute {{key}} placeholders in a template string. Whitespace inside the
+// braces is allowed: {{name}}, {{ name }}, {{  role_name  }} all work.
+function substituteMergeFields(template: string, vars: Record<string, string>): string {
+  let result = template;
+  for (const [key, value] of Object.entries(vars)) {
+    const pattern = new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, "g");
+    result = result.replace(pattern, value);
+  }
+  return result;
+}
+
+// Convert plain-text template body to HTML: escape, linkify URLs, preserve newlines.
+function plainTextBodyToHtml(text: string): string {
+  const escaped = escapeHtml(text);
+  // Linkify http(s) URLs. Stop at whitespace, common trailing punctuation, or '<'.
+  const linkified = escaped.replace(
+    /(https?:\/\/[^\s<]+?)([.,;!?)\]]*)(\s|<|$)/g,
+    (_m, url: string, trail: string, end: string) =>
+      `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>${trail}${end}`,
+  );
+  // Preserve paragraph breaks: blank line → </p><p>, single newline → <br>.
+  const paragraphs = linkified.split(/\n{2,}/).map((p) => p.replace(/\n/g, "<br>"));
+  return `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; line-height: 1.6; color: #222;">` +
+    paragraphs.map((p) => `<p style="margin: 0 0 1em 0;">${p}</p>`).join("\n") +
+    `</div>`;
+}
+
 export function renderStage1(vars: {
   candidateFirstName: string;
   roleName: string;
   orgName?: string;
   formLink: string;
   deadline: string;
+  // v2.2: per-campaign templates. When present, these override the legacy hardcoded
+  // default below. Backend stores these on the campaigns row (`stage1_subject` /
+  // `stage1_body`); the cron passes them through. HR's custom copy is used verbatim
+  // except for {{merge_field}} substitution.
+  subjectTemplate?: string | null;
+  bodyTemplate?: string | null;
 }): { subject: string; html: string; text: string } {
   const org = vars.orgName ?? ORG_NAME;
   const firstName = vars.candidateFirstName;
 
+  const mergeVars: Record<string, string> = {
+    name: firstName,
+    candidate_first_name: firstName,
+    role_name: vars.roleName,
+    form_link: vars.formLink,
+    deadline: vars.deadline,
+    org_name: org,
+    organization: org,
+  };
+
+  // ── v2.2 path: use per-campaign template if provided ──────────────────────
+  if (vars.subjectTemplate && vars.subjectTemplate.trim() && vars.bodyTemplate && vars.bodyTemplate.trim()) {
+    const subject = substituteMergeFields(vars.subjectTemplate, mergeVars);
+    const text = substituteMergeFields(vars.bodyTemplate, mergeVars);
+    const html = plainTextBodyToHtml(text);
+    return { subject, html, text };
+  }
+
+  // ── v0.1 fallback: hardcoded default (kept for safety only) ───────────────
   const subject = `Next Step — Stage-1 Screening Form | ${vars.roleName} | ${org}`;
 
   const text = [

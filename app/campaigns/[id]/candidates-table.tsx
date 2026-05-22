@@ -92,14 +92,15 @@ export function CandidatesTable({
     setSelected(new Set());
   }
 
-  // Bulk send eligibility — every selected row must be good_fit and have email.
+  // Bulk send eligibility — just needs ≥1 selected. Backend skips candidates
+  // without email (reports `no_email` in the per-row skip list) so we don't
+  // need to gate at the UI layer. Good-fit pre-filtering happens BEFORE import
+  // per v2.2; everyone in this campaign is already an approved good-fit.
   const selectedCandidates = useMemo(
     () => candidates.filter((c) => selected.has(c.id)),
     [candidates, selected],
   );
-  const allSelectedGoodFit =
-    selectedCandidates.length > 0 &&
-    selectedCandidates.every((c) => c.verdict === "good_fit" && !!c.email);
+  const selectedWithoutEmail = selectedCandidates.filter((c) => !c.email).length;
 
   // ── Import evaluations (multipart upload) ───────────────────────────────
   const importMutation = useMutation({
@@ -210,11 +211,11 @@ export function CandidatesTable({
             type="button"
             size="sm"
             onClick={() => setBulkSendOpen(true)}
-            disabled={!hasSelection || !allSelectedGoodFit}
+            disabled={!hasSelection}
             title={bulkSendTooltip({
               hasSelection,
-              allSelectedGoodFit,
               selectedCount,
+              selectedWithoutEmail,
             })}
           >
             <Send />
@@ -354,16 +355,18 @@ export function CandidatesTable({
 
 function bulkSendTooltip({
   hasSelection,
-  allSelectedGoodFit,
   selectedCount,
+  selectedWithoutEmail,
 }: {
   hasSelection: boolean;
-  allSelectedGoodFit: boolean;
   selectedCount: number;
+  selectedWithoutEmail: number;
 }): string {
   if (!hasSelection) return "Select one or more candidates first.";
-  if (!allSelectedGoodFit)
-    return `${selectedCount} selected, but not all are marked Good Fit with an email on file. Import evaluations first.`;
+  const sendable = selectedCount - selectedWithoutEmail;
+  if (selectedWithoutEmail > 0) {
+    return `${sendable} will be queued. ${selectedWithoutEmail} will be skipped (no email on file).`;
+  }
   return `Queue Stage-1 emails for ${selectedCount} candidate${selectedCount === 1 ? "" : "s"}.`;
 }
 

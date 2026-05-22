@@ -102,14 +102,10 @@ export const POST = withAuth<Ctx>(async (req: NextRequest, ctx, session) => {
     }
 
     if (template_type === "stage1") {
-      if (c.verdict !== "good_fit") {
-        skipped.push({ candidate_id: cid, reason: "verdict_not_good_fit" });
-        continue;
-      }
-      if (c.stage !== "evaluated_screen1") {
-        skipped.push({ candidate_id: cid, reason: "wrong_stage" });
-        continue;
-      }
+      // v2.2: HR pre-filters good-fit candidates BEFORE import (via the LinkedIn
+      // good-fit exporter userscript + match script), so any candidate sitting
+      // in this campaign is already an approved good-fit. We trust the import
+      // pipeline and only gate on email presence (already checked above).
     } else {
       if (c.interviewVerdict !== "call_interview") {
         skipped.push({

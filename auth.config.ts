@@ -18,6 +18,7 @@ export const authConfig = {
       if (
         pathname.startsWith("/api/auth") ||
         pathname.startsWith("/api/webhooks") ||
+        pathname.startsWith("/api/cron") ||
         pathname === "/login" ||
         pathname === "/api/health"
       ) {

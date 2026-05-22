@@ -28,18 +28,22 @@ import { campaignsQueryKey } from "./campaign-list";
 // Backend has its own defaults for reminder + interview bodies (CONTRACTS §5
 // `lib/email/defaults.ts`); we only surface Stage-1 for today's MVP.
 const DEFAULT_STAGE1_SUBJECT =
-  "Next Step — Stage-1 Screening Form | {{role_name}} | Omysha Foundation";
+  "Next Step — Stage-1 Screening Form | {{role_name}} | Omysha Foundation-A4G & VONG";
 
-const DEFAULT_STAGE1_BODY = `Dear {{name}},
+const DEFAULT_STAGE1_BODY = `Hey {{name}},
+Thank you for your interest in the {{role_name}} role at Omysha Foundation- VONG & A4G.
+As the next step in our selection process, shortlisted candidates are requested to complete the Stage-1 Screening Google Form within 24 hours of receiving this message:
+Google Form Link: {{form_link}}
+Your responses will help us understand alignment with the role. Based on the evaluation, selected candidates will be invited for an online interaction, and further details will be shared after assessment.
+Please note that only candidates who submit the form within the given timeline will be considered for the interview stage.
 
-Thank you for applying. As the next step, please fill out our short screening form so we can learn more about your background and availability:
+This is the link to our A4G : https://www.a4gcollab.org/ & A4G LinkedIn page : https://www.linkedin.com/company/a4gcollab
 
-{{form_link}}
+This is the link to our VONG Movement: https://vong.earth/ & VONG LinkedIn page : https://www.linkedin.com/company/vong-earth/
 
-Please complete it by {{deadline}}.
-
-Warm regards,
-Omysha Foundation — HR Team`;
+Best regards,
+ Team Omysha Foundation
+ VONG Movement | AI for Good (A4G) Impact Collaborative`;
 
 const DEFAULT_REMINDER_DAYS = 3;
 

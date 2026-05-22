@@ -12,26 +12,22 @@
 // Stage-1 text adapted from PRD v2.1 §6.2.2 with merge-field syntax updated.
 
 export const DEFAULT_STAGE1_SUBJECT =
-  "Next Step — Stage-1 Screening Form";
+  "Next Step — Stage-1 Screening Form | {{role_name}} | Omysha Foundation-A4G & VONG";
 
-export const DEFAULT_STAGE1_BODY = `Dear {{name}},
+export const DEFAULT_STAGE1_BODY = `Hey {{name}},
+Thank you for your interest in the {{role_name}} role at Omysha Foundation- VONG & A4G.
+As the next step in our selection process, shortlisted candidates are requested to complete the Stage-1 Screening Google Form within 24 hours of receiving this message:
+Google Form Link: {{form_link}}
+Your responses will help us understand alignment with the role. Based on the evaluation, selected candidates will be invited for an online interaction, and further details will be shared after assessment.
+Please note that only candidates who submit the form within the given timeline will be considered for the interview stage.
 
-Thank you for your interest in the role at our organization.
+This is the link to our A4G : https://www.a4gcollab.org/ & A4G LinkedIn page : https://www.linkedin.com/company/a4gcollab
 
-As the next step in our selection process, please complete the Stage-1 Screening Form within 24 hours of receiving this email:
+This is the link to our VONG Movement: https://vong.earth/ & VONG LinkedIn page : https://www.linkedin.com/company/vong-earth/
 
-{{form_link}}
-
-Your responses will help us understand your alignment with the role. Based on the evaluation, selected candidates will be invited for an online interaction.
-
-Please note: only candidates who submit the form within the given timeline will be considered for the interview stage.
-
-Deadline: {{deadline}}
-
-Warm regards,
-HR Team
-
-(If you did not apply for this role, please disregard this email.)`;
+Best regards,
+ Team Omysha Foundation
+ VONG Movement | AI for Good (A4G) Impact Collaborative`;
 
 export const DEFAULT_REMINDER_SUBJECT =
   "Reminder — Stage-1 Screening Form still pending";

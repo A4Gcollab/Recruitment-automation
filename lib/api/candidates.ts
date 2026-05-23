@@ -101,6 +101,25 @@ export type ImportFilteredResult = {
   unmatched_goodfit_names: string[];
 };
 
+// v0.3 — pull Google Form responses into candidate records
+export type PullResponsesUnmatched = {
+  row: number;
+  email: string | null;
+  reason: "no_candidate_match" | "missing_email";
+};
+
+export type PullResponsesResult = {
+  pulled: number;
+  matched: number;
+  unmatched: PullResponsesUnmatched[];
+  deduped: number;
+};
+
+export type PullResponsesPayload = {
+  response_sheet_url?: string; // optional override; default uses campaign.form_response_sheet_url
+  email_question_header?: string; // optional override of which Form question holds email
+};
+
 // ────────────────────────────────────────────────────────────────────────────
 
 export type CandidatesFilters = {
@@ -323,5 +342,18 @@ export function importFiltered(
   return postMultipart<ImportFilteredResult>(
     `/api/campaigns/${campaignId}/import-filtered`,
     form,
+  );
+}
+
+// v0.3 — pull Google Form responses from the response sheet (linked from the
+// Form's Responses tab → "Link to Sheets") and write them into candidates.
+// Matches submissions to candidates by email. Idempotent.
+export function pullResponses(
+  campaignId: Uuid,
+  payload: PullResponsesPayload = {},
+): Promise<PullResponsesResult> {
+  return postJson<PullResponsesResult>(
+    `/api/campaigns/${campaignId}/pull-responses`,
+    payload,
   );
 }

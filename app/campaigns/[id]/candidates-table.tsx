@@ -9,6 +9,7 @@ import {
   Loader2,
   Mail,
   Send,
+  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -33,6 +34,7 @@ import {
   type EvaluationImportResult,
 } from "@/lib/api/candidates";
 import { campaignQueryKey } from "./campaign-detail-view";
+import { ImportFilteredDialog } from "./import-filtered-dialog";
 import { SendBulkDialog } from "./send-bulk-dialog";
 import { SendStage1Dialog } from "./send-stage1-dialog";
 
@@ -53,6 +55,7 @@ export function CandidatesTable({
   const [sendTarget, setSendTarget] = useState<Candidate | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkSendOpen, setBulkSendOpen] = useState(false);
+  const [importFilteredOpen, setImportFilteredOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
@@ -173,6 +176,17 @@ export function CandidatesTable({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setImportFilteredOpen(true)}
+            title="Upload LinkedIn good-fit list + ApplicantSync export. Imports only matching candidates with full data."
+          >
+            <Users />
+            Import filtered (2 files)
+          </Button>
+
           <Button
             type="button"
             variant="outline"
@@ -348,6 +362,12 @@ export function CandidatesTable({
         onOpenChange={setBulkSendOpen}
         candidates={selectedCandidates}
         onSent={clearSelection}
+      />
+
+      <ImportFilteredDialog
+        campaignId={campaignId}
+        open={importFilteredOpen}
+        onOpenChange={setImportFilteredOpen}
       />
     </>
   );

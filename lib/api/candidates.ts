@@ -90,6 +90,17 @@ export type EvaluationImportResult = {
   }>;
 };
 
+// v0.2 — two-file filtered import (LinkedIn good-fit list + ApplicantSync data)
+export type ImportFilteredResult = {
+  goodfit_total: number;
+  data_total: number;
+  matched: number;
+  imported: number;
+  skipped_existing: number;
+  skipped_no_email: number;
+  unmatched_goodfit_names: string[];
+};
+
 // ────────────────────────────────────────────────────────────────────────────
 
 export type CandidatesFilters = {
@@ -296,5 +307,21 @@ export function sendBulk(
   return postJson<BulkSendResult>(
     `/api/campaigns/${campaignId}/send-bulk`,
     payload,
+  );
+}
+
+// v0.2 — two-file filtered import: upload LinkedIn good-fit CSV + ApplicantSync
+// CSV/XLSX, match by normalized name, import only the intersection.
+export function importFiltered(
+  campaignId: Uuid,
+  goodfitFile: File,
+  dataFile: File,
+): Promise<ImportFilteredResult> {
+  const form = new FormData();
+  form.append("goodfit_file", goodfitFile);
+  form.append("data_file", dataFile);
+  return postMultipart<ImportFilteredResult>(
+    `/api/campaigns/${campaignId}/import-filtered`,
+    form,
   );
 }

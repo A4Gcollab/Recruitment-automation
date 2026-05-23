@@ -162,6 +162,17 @@ export type EvaluationImportResult = {
   unmatched: EvaluationImportUnmatched[];
 };
 
+// v0.2 — two-file filtered import (LinkedIn good-fit list + ApplicantSync data)
+export type ImportFilteredResult = {
+  goodfit_total: number;
+  data_total: number;
+  matched: number;
+  imported: number;
+  skipped_existing: number;
+  skipped_no_email: number;
+  unmatched_goodfit_names: string[];
+};
+
 // v0.2 — bulk email send
 export type BulkSendSkipReason =
   | "verdict_not_good_fit"

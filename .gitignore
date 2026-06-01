@@ -14,6 +14,8 @@ build/
 .env
 .env.local
 .env*.local
+.env.production
+!.env.production.example
 
 # vercel
 .vercel/

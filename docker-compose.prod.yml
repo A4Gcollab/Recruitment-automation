@@ -1,0 +1,49 @@
+# Production stack for the Vultr VPS: Next.js app + Postgres.
+#
+# The VPS already runs a system nginx on :80/:443 serving other sites, so this
+# stack does NOT run its own proxy. The app is published on 127.0.0.1:3000 only
+# (loopback — never exposed publicly); the host's nginx reverse-proxies to it and
+# terminates TLS via certbot. See DEPLOYMENT.md §7 and deploy/nginx/.
+#
+# Usage (run from the repo root on the VPS), reading config from .env.production:
+#   docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
+#   docker compose --env-file .env.production -f docker-compose.prod.yml \
+#       run --rm app sh -c "npm run db:migrate && npm run db:seed"   # first run only
+#
+# The dev DB in docker-compose.yml is untouched — this is a separate stack.
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: a4g-prod-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: a4g_prod
+    volumes:
+      - a4g-prod-pgdata:/var/lib/postgresql/data
+    # No published ports — only the app reaches it over the internal network.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d a4g_prod"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: a4g-app
+    restart: unless-stopped
+    env_file: .env.production
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      # Loopback only — the host's nginx proxies to this. NOT public.
+      - "127.0.0.1:3000:3000"
+
+volumes:
+  a4g-prod-pgdata:
+    name: a4g-prod-pgdata

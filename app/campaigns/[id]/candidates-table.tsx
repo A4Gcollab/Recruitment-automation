@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Download,
+  FileDown,
   FileUp,
   Inbox,
   Loader2,
@@ -35,6 +36,7 @@ import {
 } from "@/lib/api/candidates";
 import { campaignQueryKey } from "./campaign-detail-view";
 import { ImportFilteredDialog } from "./import-filtered-dialog";
+import { PullResponsesDialog } from "./pull-responses-dialog";
 import { SendBulkDialog } from "./send-bulk-dialog";
 import { SendStage1Dialog } from "./send-stage1-dialog";
 
@@ -56,6 +58,7 @@ export function CandidatesTable({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkSendOpen, setBulkSendOpen] = useState(false);
   const [importFilteredOpen, setImportFilteredOpen] = useState(false);
+  const [pullResponsesOpen, setPullResponsesOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
@@ -185,6 +188,22 @@ export function CandidatesTable({
           >
             <Users />
             Import filtered (2 files)
+          </Button>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setPullResponsesOpen(true)}
+            disabled={totalCount === 0}
+            title={
+              totalCount === 0
+                ? "Import candidates first"
+                : "Pull Google Form responses → match to candidates by email → advance stage"
+            }
+          >
+            <FileDown />
+            Pull form responses
           </Button>
 
           <Button
@@ -368,6 +387,13 @@ export function CandidatesTable({
         campaignId={campaignId}
         open={importFilteredOpen}
         onOpenChange={setImportFilteredOpen}
+      />
+
+      <PullResponsesDialog
+        campaignId={campaignId}
+        campaign={campaign}
+        open={pullResponsesOpen}
+        onOpenChange={setPullResponsesOpen}
       />
     </>
   );

@@ -1,0 +1,16 @@
+# Keep secrets, host-built artifacts, and dev-only files out of the image.
+.git
+.githooks
+.claude
+node_modules
+.next
+.env
+.env.*
+*.log
+*.md
+scripts
+docker-compose*.yml
+Dockerfile
+.dockerignore
+deploy
+tsconfig.tsbuildinfo

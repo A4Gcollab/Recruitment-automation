@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import { LoginForm } from "./login-form";
 
 export const metadata = {
@@ -7,7 +9,9 @@ export const metadata = {
 export default function LoginPage() {
   return (
     <main className="flex min-h-svh items-center justify-center bg-muted/40 p-6">
-      <LoginForm />
+      <Suspense fallback={null}>
+        <LoginForm />
+      </Suspense>
     </main>
   );
 }

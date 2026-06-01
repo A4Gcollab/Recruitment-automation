@@ -3,8 +3,9 @@
 Step-by-step setup for A4G LinkedIn Recruitment Automation. Follow top-to-bottom the first time.
 
 - **Prereqs:** GitHub access to `A4Gcollab/Recruitment-automation`, a Google Cloud account, a Gmail account for sending, Node 22+, `npm` 10+.
-- **Stack:** Next.js 15 · PostgreSQL (local: WSL; prod: Neon) · Vercel Hobby · Gmail SMTP · Google Sheets API · Gmail API. See `PRD_v2.1.md` for rationale.
-- **Secrets:** every variable in `CONTRACTS.md §1` lives in `.env.local` locally and Vercel env vars in production. Nothing is `NEXT_PUBLIC_`.
+- **Stack:** Next.js 15 · PostgreSQL (local: WSL; prod: Docker on a Vultr VPS) · Vultr VPS + Docker Compose · system nginx + certbot (TLS) · Gmail SMTP · Google Sheets API · Gmail API. See `PRD_v2.1.md` for rationale.
+- **Deployment target (2026-06-01):** self-hosted **Vultr VPS** (not Vercel) at `139.84.154.64`, domain `RecSup.omysha.org`. App + Postgres run as a Docker Compose stack; the box's **existing system nginx** reverse-proxies to the app and certbot handles TLS; cron is the VPS's native `cron`. ~$6/mo — this replaces the prior $0/mo Vercel+Neon design.
+- **Secrets:** every variable in `CONTRACTS.md §1` lives in `.env.local` locally and `.env.production` on the VPS. Nothing is `NEXT_PUBLIC_`.
 
 ---
 
@@ -38,11 +39,14 @@ sudo -u postgres createdb a4g_local
 
 `.env.local` already defaults to: `DATABASE_URL=postgres://postgres:postgres@localhost:5432/a4g_local`
 
-### 2b. Production — Neon (free tier)
+### 2b. Production — Postgres on the Vultr VPS
 
-1. Sign in at <https://console.neon.tech>.
-2. Create project `a4g-recruitment`, Postgres 16.
-3. Copy the **pooled connection** URL → paste into Vercel env vars as `DATABASE_URL`.
+Production Postgres runs as a Docker container on the VPS (no Neon). It is
+created and managed by `docker-compose.prod.yml` — see §7. Data persists in the
+`a4g-prod-pgdata` Docker volume. The DB is **not** published to the public
+internet; only the app container reaches it over the internal compose network.
+`DATABASE_URL` therefore uses the service hostname `db` (e.g.
+`postgres://postgres:<password>@db:5432/a4g_prod`).
 
 ---
 
@@ -135,33 +139,119 @@ For detecting "Confirmed" replies to Stage-2 interview invite emails.
 
 ---
 
-## 7. Vercel (production deployment)
+## 7. Vultr VPS (production deployment)
 
-1. <https://vercel.com> → Add New → Project → import `A4Gcollab/Recruitment-automation`.
-2. Add all env vars from `.env.local` under Settings → Environment Variables (use the Neon URL for `DATABASE_URL`, not the local one).
-3. Deploy. Copy the production URL → set as `NEXTAUTH_URL`.
+This VPS (`139.84.154.64`) already runs a **system nginx** on :80/:443 serving
+other sites, so we **reuse that nginx** as the reverse proxy rather than running
+our own. The app + Postgres run as a Docker Compose stack
+(`docker-compose.prod.yml`); the app is published on `127.0.0.1:3000` (loopback
+only), and nginx proxies `RecSup.omysha.org` to it with TLS from certbot.
+
+**Prereqs:** SSH access to the VPS (sudo), Docker + the nginx/certbot already on
+the box, and DNS resolving.
+
+### 7.1 Point the domain at the VPS
+
+At the DNS provider for `omysha.org`, add an **A record**:
+`RecSup.omysha.org` → `139.84.154.64`. Confirm it resolves:
+`dig +short RecSup.omysha.org` → `139.84.154.64`.
+
+### 7.2 Ensure Docker is present (one-time)
+
+```bash
+docker --version || curl -fsSL https://get.docker.com | sh
+# allow your user to run docker without sudo (log out/in after):
+sudo usermod -aG docker $USER
+```
+nginx, certbot, and the firewall are already configured on this box (other sites
+use them) — do **not** reset them.
+
+### 7.3 Get the code + secrets onto the VPS
+
+```bash
+git clone https://github.com/A4Gcollab/Recruitment-automation.git
+cd Recruitment-automation
+git config --local user.name  "SnehaChouksey"
+git config --local user.email "snehachoukseyobc@gmail.com"
+
+cp .env.production.example .env.production
+nano .env.production        # fill in every value (see notes below)
+```
+
+In `.env.production`:
+- `POSTGRES_PASSWORD` and the password inside `DATABASE_URL` must match. `DATABASE_URL`
+  uses host `db` (the container): `postgres://postgres:<pw>@db:5432/a4g_prod`.
+- `NEXTAUTH_URL` = `https://RecSup.omysha.org`.
+- Generate secrets: `openssl rand -base64 32` (NEXTAUTH_SECRET), `openssl rand -hex 24` (CRON_SECRET).
+- Paste the Google service-account private key as a single double-quoted line with `\n`
+  for newlines (same form as `.env.local`).
+
+`.env.production` holds live secrets — it is git-ignored; never commit it.
+
+### 7.4 Launch the app + DB
+
+```bash
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
+```
+
+First run only — create the schema and seed the 9 stages:
+
+```bash
+docker compose --env-file .env.production -f docker-compose.prod.yml \
+    run --rm app sh -c "npm run db:migrate && npm run db:seed"
+```
+
+Confirm the app answers locally (before wiring nginx):
+`curl -I http://127.0.0.1:3000` → `200`/`307`.
+
+### 7.5 Add the nginx vhost + TLS (reusing the box's nginx)
+
+```bash
+sudo cp deploy/nginx/RecSup.omysha.org.conf /etc/nginx/sites-available/RecSup.omysha.org
+sudo ln -s /etc/nginx/sites-available/RecSup.omysha.org /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx     # -t verifies it won't break other sites
+sudo certbot --nginx -d RecSup.omysha.org        # issues + wires the cert for THIS domain only
+```
+
+Visit `https://RecSup.omysha.org`. certbot auto-renews via its existing timer.
+
+### 7.6 Redeploying after a code change
+
+```bash
+git pull
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
+# run migrations again only if new DB migrations landed:
+docker compose --env-file .env.production -f docker-compose.prod.yml \
+    run --rm app sh -c "npm run db:migrate"
+```
+
+Useful: `docker compose -f docker-compose.prod.yml logs -f app` (logs),
+`... ps` (status), `... down` (stop; data persists in the volume).
 
 ---
 
-## 8. UptimeRobot (free cron trigger)
+## 8. Cron (native VPS crontab)
 
-Vercel Hobby cron is limited to 1/hour. UptimeRobot pings our cron endpoints every 5 minutes for free.
+The VPS runs real cron, so no external pinger is needed. Each cron endpoint
+authenticates with `Authorization: Bearer <CRON_SECRET>`.
 
-1. Create account at <https://uptimerobot.com>.
-2. Add monitors (HTTP, 5-min interval) for each cron endpoint:
-   - `https://your-app.vercel.app/api/cron/process-queue` (v0.1+)
-   - `https://your-app.vercel.app/api/cron/poll-forms` (v0.2+)
-   - `https://your-app.vercel.app/api/cron/check-reminders` (v0.3+)
-   - `https://your-app.vercel.app/api/cron/poll-replies` (v0.3+)
-   - `https://your-app.vercel.app/api/health` (uptime)
-3. Each endpoint validates a `CRON_SECRET` header — set the same secret in UptimeRobot's custom headers and Vercel env vars.
+Edit the crontab (`crontab -e`) and add a line per **endpoint that exists**. As of
+v0.3.1 only `process-queue` is built; add the others as they ship.
+
+```cron
+# Use the same CRON_SECRET value as in .env.production
+*/5 * * * * curl -fsS -H "Authorization: Bearer YOUR_CRON_SECRET" https://RecSup.omysha.org/api/cron/process-queue >/dev/null 2>&1
+# v0.2+  */5 * * * * curl -fsS -H "Authorization: Bearer YOUR_CRON_SECRET" https://RecSup.omysha.org/api/cron/poll-forms      >/dev/null 2>&1
+# v0.3+  */5 * * * * curl -fsS -H "Authorization: Bearer YOUR_CRON_SECRET" https://RecSup.omysha.org/api/cron/check-reminders >/dev/null 2>&1
+# v0.3+  */5 * * * * curl -fsS -H "Authorization: Bearer YOUR_CRON_SECRET" https://RecSup.omysha.org/api/cron/poll-replies    >/dev/null 2>&1
+```
 
 ---
 
 ## 9. First-run checklist
 
 - [ ] `.env.local` populated.
-- [ ] `sudo service postgresql start` (or Neon connected).
+- [ ] Local: `sudo service postgresql start`. Prod: the `db` container is up (`docker compose -f docker-compose.prod.yml ps`).
 - [ ] `npm run db:migrate && npm run db:seed` ran cleanly.
 - [ ] Login works at `/login`.
 - [ ] Gmail test email sends successfully (check spam folder too).

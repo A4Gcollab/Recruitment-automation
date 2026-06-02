@@ -6,6 +6,7 @@ import { useState } from "react";
 import { FolderPlus, ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -47,10 +48,10 @@ export function CampaignList() {
         </Button>
       </div>
 
-      <div className="rounded-lg border bg-card">
+      <div className="overflow-hidden rounded-lg border bg-card">
         <Table>
-          <TableHeader>
-            <TableRow>
+          <TableHeader className="bg-muted/60">
+            <TableRow className="hover:bg-transparent">
               <TableHead>Role</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Interview</TableHead>
@@ -70,9 +71,9 @@ export function CampaignList() {
                 <TableRow key={c.id}>
                   <TableCell className="font-medium">{c.role_name}</TableCell>
                   <TableCell>
-                    <span className="inline-flex items-center rounded-md bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground capitalize">
+                    <Badge className={`capitalize ${statusClass(c.status)}`}>
                       {c.status}
-                    </span>
+                    </Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {c.interview_date && c.interview_time
@@ -106,6 +107,19 @@ export function CampaignList() {
       <CreateCampaignDialog open={createOpen} onOpenChange={setCreateOpen} />
     </>
   );
+}
+
+function statusClass(status: string): string {
+  switch (status) {
+    case "active":
+      return "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300";
+    case "paused":
+      return "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300";
+    case "closed":
+      return "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300";
+    default:
+      return "bg-secondary text-secondary-foreground";
+  }
 }
 
 function LoadingRows() {

@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -53,11 +53,26 @@ export function LoginForm() {
   }
 
   return (
-    <Card className="w-full max-w-sm">
+    <div className="flex w-full max-w-sm flex-col items-center gap-6">
+      <div className="flex flex-col items-center gap-3 text-center">
+        <span className="flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+          <Sparkles className="size-5" aria-hidden />
+        </span>
+        <div>
+          <p className="text-base font-semibold tracking-tight">
+            Omysha Foundation — Recruitment
+          </p>
+          <p className="text-xs text-muted-foreground">
+            VONG Movement · AI for Good (A4G) Impact Collaborative
+          </p>
+        </div>
+      </div>
+
+      <Card className="w-full">
       <CardHeader>
         <CardTitle className="text-xl">Sign in</CardTitle>
         <CardDescription>
-          A4G Recruitment Automation — admin access.
+          Admin access for the recruitment automation tool.
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>
@@ -108,6 +123,7 @@ export function LoginForm() {
           </Button>
         </CardFooter>
       </form>
-    </Card>
+      </Card>
+    </div>
   );
 }

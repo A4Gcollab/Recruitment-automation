@@ -44,18 +44,6 @@ It's a **human-in-the-loop** tool: the app does the repetitive heavy lifting; a 
 
 ---
 
-## 📸 Screenshots
-
-<!-- Drop PNGs into docs/screenshots/ and embed them here, e.g.:
-<p align="center">
-  <img src="docs/screenshots/dashboard.png"  width="800" alt="Dashboard — campaigns">
-  <img src="docs/screenshots/candidates.png" width="800" alt="Candidate pipeline">
-</p>
--->
-> _Screenshots coming soon — see the [live app](https://recsup.omysha.org)._
-
----
-
 ## 🔧 How it works
 
 ```
@@ -166,6 +154,6 @@ All docs live in **[`docs/`](docs/README.md)** — deployment runbook, API/env/t
 
 ## 👤 Author
 
-**Sneha Chouksey** — for the VONG Movement · AI for Good (A4G) Impact Collaborative / Omysha Foundation.
+**Sneha Chouksey** — AI Product Lead -A4G Impact Collaborative(Omysha Foundation).
 
 <sub>© 2026 A4G Impact Collaborative / Omysha Foundation. All rights reserved.</sub>

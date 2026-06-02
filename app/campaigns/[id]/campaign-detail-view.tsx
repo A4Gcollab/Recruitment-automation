@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ApiClientError,
@@ -79,13 +80,32 @@ function CampaignHeader({ campaign }: { campaign: CampaignDetail }) {
       <h1 className="text-2xl font-semibold tracking-tight">
         {campaign.role_name}
       </h1>
-      <p className="text-sm text-muted-foreground">
-        <span className="capitalize">{campaign.status}</span> · {total}{" "}
-        candidate{total === 1 ? "" : "s"}
-        {campaign.interview_date ? ` · Interview ${campaign.interview_date}` : ""}
-      </p>
+      <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+        <Badge className={`capitalize ${statusClass(campaign.status)}`}>
+          {campaign.status}
+        </Badge>
+        <span>
+          {total} candidate{total === 1 ? "" : "s"}
+          {campaign.interview_date
+            ? ` · Interview ${campaign.interview_date}`
+            : ""}
+        </span>
+      </div>
     </div>
   );
+}
+
+function statusClass(status: string): string {
+  switch (status) {
+    case "active":
+      return "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300";
+    case "paused":
+      return "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300";
+    case "closed":
+      return "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300";
+    default:
+      return "bg-secondary text-secondary-foreground";
+  }
 }
 
 function CampaignError({

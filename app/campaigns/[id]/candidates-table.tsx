@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
+import { StageBadge } from "@/components/ui/stage-badge";
 import {
   Table,
   TableBody,
@@ -266,10 +267,10 @@ export function CandidatesTable({
         />
       </div>
 
-      <div className="rounded-lg border bg-card">
+      <div className="overflow-hidden rounded-lg border bg-card">
         <Table>
-          <TableHeader>
-            <TableRow>
+          <TableHeader className="sticky top-14 z-10 bg-muted/60 backdrop-blur">
+            <TableRow className="hover:bg-transparent">
               <TableHead className="w-[40px]">
                 <Checkbox
                   aria-label="Select all candidates"
@@ -330,9 +331,7 @@ export function CandidatesTable({
                     )}
                   </TableCell>
                   <TableCell>
-                    <span className="inline-flex items-center rounded-md bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
-                      {candidate.stage}
-                    </span>
+                    <StageBadge stage={candidate.stage} />
                   </TableCell>
                   <TableCell>
                     <VerdictChip verdict={candidate.verdict} />

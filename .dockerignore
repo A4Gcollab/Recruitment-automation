@@ -9,6 +9,7 @@ node_modules
 *.log
 *.md
 scripts
+docs
 docker-compose*.yml
 Dockerfile
 .dockerignore

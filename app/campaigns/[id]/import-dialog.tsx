@@ -181,7 +181,7 @@ export function ImportDialog({
               />
               <p className="text-xs text-muted-foreground">
                 Share the sheet with the service account email (see
-                DEPLOYMENT.md). ApplicantSync exports land here.
+                docs/DEPLOYMENT.md). ApplicantSync exports land here.
               </p>
             </div>
           </div>

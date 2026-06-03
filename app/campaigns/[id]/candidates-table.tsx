@@ -269,7 +269,7 @@ export function CandidatesTable({
 
       <div className="overflow-hidden rounded-lg border bg-card">
         <Table>
-          <TableHeader className="sticky top-14 z-10 bg-muted/60 backdrop-blur">
+          <TableHeader className="bg-muted/60">
             <TableRow className="hover:bg-transparent">
               <TableHead className="w-[40px]">
                 <Checkbox

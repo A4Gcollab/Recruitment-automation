@@ -181,6 +181,7 @@ export const POST = withAuth<Ctx>(async (req: NextRequest, ctx, session) => {
           googleSheetRow: row.row_number,
         })),
       )
+      .onConflictDoNothing()
       .returning({ id: candidates.id });
     insertedIds = rows.map((r) => r.id);
   }

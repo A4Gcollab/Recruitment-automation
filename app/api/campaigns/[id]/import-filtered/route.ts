@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { and, eq, inArray } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { campaigns, candidates } from "@/db/schema";
 import { ERR } from "@/lib/api/response";
@@ -160,24 +160,16 @@ export const POST = withAuth<Ctx>(async (req: NextRequest, ctx, session) => {
     debatched.push(m);
   }
 
-  // Check which emails already exist in this campaign
-  const incomingEmails = debatched
-    .map((m) => m.email?.toLowerCase())
-    .filter((e): e is string => !!e);
+  // Emails already in this campaign — compared case-insensitively. Stored emails
+  // keep their original case, so querying by lower-cased values would miss them
+  // and cause duplicate-key crashes on re-import.
+  const existingRows = await db
+    .select({ email: candidates.email })
+    .from(candidates)
+    .where(eq(candidates.campaignId, campaignId));
   const existingSet = new Set<string>();
-  if (incomingEmails.length > 0) {
-    const existing = await db
-      .select({ email: candidates.email })
-      .from(candidates)
-      .where(
-        and(
-          eq(candidates.campaignId, campaignId),
-          inArray(candidates.email, incomingEmails),
-        ),
-      );
-    for (const r of existing) {
-      if (r.email) existingSet.add(r.email.toLowerCase());
-    }
+  for (const r of existingRows) {
+    if (r.email) existingSet.add(r.email.toLowerCase());
   }
 
   // Final insert list (skip rows already in DB)
@@ -237,6 +229,7 @@ export const POST = withAuth<Ctx>(async (req: NextRequest, ctx, session) => {
           googleSheetRow: i + 1,
         })),
       )
+      .onConflictDoNothing()
       .returning({ id: candidates.id });
     insertedCount = inserted.length;
   }

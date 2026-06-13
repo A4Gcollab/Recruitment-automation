@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, MessageCircle, Send, X } from "lucide-react";
+import { Loader2, MoreVertical, Phone, Send, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -43,10 +43,7 @@ export function WhatsAppChatPanel({
 
   const replyMutation = useMutation({
     mutationFn: () =>
-      sendWhatsAppReply({
-        candidate_id: candidate.id,
-        message: replyText,
-      }),
+      sendWhatsAppReply({ candidate_id: candidate.id, message: replyText }),
     onSuccess: () => {
       setReplyText("");
       queryClient.invalidateQueries({ queryKey });
@@ -71,36 +68,72 @@ export function WhatsAppChatPanel({
     }
   }
 
+  const initials = candidate.full_name
+    .split(" ")
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
   return (
-    <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-2xl flex-col border-l bg-background shadow-xl">
+    <div className="flex h-full flex-col bg-white dark:bg-slate-900">
       {/* Header */}
-      <div className="flex items-center justify-between border-b px-4 py-3">
-        <div className="min-w-0">
-          <h3 className="truncate text-sm font-semibold">{candidate.full_name}</h3>
-          <p className="text-xs text-muted-foreground">
+      <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-[11px] font-bold text-white shadow-sm">
+          {initials}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+            {candidate.full_name}
+          </p>
+          <p className="truncate text-[11px] text-slate-400 dark:text-slate-500">
             {candidate.phone ?? "No phone"} · {candidate.stage}
           </p>
         </div>
-        <Button variant="ghost" size="icon" onClick={onClose}>
-          <X className="size-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+          >
+            <Phone className="size-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+          >
+            <MoreVertical className="size-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+            onClick={onClose}
+          >
+            <X className="size-3.5" />
+          </Button>
+        </div>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-3">
+      <div
+        className="flex-1 overflow-y-auto px-4 py-4"
+        style={{
+          background:
+            "linear-gradient(180deg, #f0fdf4 0%, #f8fafc 100%)",
+        }}
+      >
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="size-6 animate-spin text-muted-foreground" />
+            <Loader2 className="size-5 animate-spin text-slate-300" />
           </div>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
-            <MessageCircle className="size-8 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">
-              No WhatsApp messages yet
-            </p>
+            <p className="text-xs text-slate-400">No messages yet</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {messages.map((msg) => (
               <ChatBubble key={msg.id} message={msg} />
             ))}
@@ -109,8 +142,8 @@ export function WhatsAppChatPanel({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Reply input */}
-      <div className="border-t px-4 py-3">
+      {/* Input */}
+      <div className="border-t border-slate-100 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
         {windowOpen ? (
           <>
             <div className="flex items-end gap-2">
@@ -120,26 +153,26 @@ export function WhatsAppChatPanel({
                 onKeyDown={handleKeyDown}
                 placeholder="Type a reply..."
                 rows={2}
-                className="flex-1 resize-none rounded-md border bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="flex-1 resize-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               />
-              <Button
-                size="icon"
+              <button
                 onClick={handleSend}
                 disabled={!replyText.trim() || replyMutation.isPending}
+                className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500 text-white shadow-sm transition-all hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {replyMutation.isPending ? (
-                  <Loader2 className="size-4 animate-spin" />
+                  <Loader2 className="size-3.5 animate-spin" />
                 ) : (
-                  <Send className="size-4" />
+                  <Send className="size-3.5" />
                 )}
-              </Button>
+              </button>
             </div>
             <WindowTimer expiresAt={windowExpiresAt} />
           </>
         ) : (
-          <p className="text-center text-xs text-muted-foreground">
+          <p className="py-1 text-center text-[11px] text-slate-400">
             {windowExpiresAt
-              ? "24h reply window closed. Send a template message to re-engage."
+              ? "24h reply window closed. Send a template to re-engage."
               : "No reply received yet. Send a WhatsApp template to start the conversation."}
           </p>
         )}
@@ -155,20 +188,18 @@ function ChatBubble({ message }: { message: WhatsAppMessage }) {
   return (
     <div className={`flex ${isOutbound ? "justify-end" : "justify-start"}`}>
       <div
-        className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
+        className={`max-w-[78%] rounded-2xl px-3.5 py-2 text-sm shadow-sm ${
           isOutbound
-            ? "bg-emerald-50 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100"
-            : "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100"
+            ? "rounded-br-sm bg-emerald-500 text-white"
+            : "rounded-bl-sm bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100"
         }`}
       >
-        <p className="whitespace-pre-wrap break-words">
+        <p className="whitespace-pre-wrap break-words leading-relaxed">
           {message.body ?? `[${message.template_name ?? "message"}]`}
         </p>
         <div
           className={`mt-1 flex items-center gap-1 text-[10px] ${
-            isOutbound
-              ? "text-emerald-600 dark:text-emerald-400"
-              : "text-slate-500 dark:text-slate-400"
+            isOutbound ? "justify-end text-emerald-100" : "text-slate-400"
           }`}
         >
           <span>{time}</span>
@@ -182,18 +213,18 @@ function ChatBubble({ message }: { message: WhatsAppMessage }) {
 function StatusTicks({ status }: { status: string }) {
   switch (status) {
     case "sent":
-      return <span title="Sent">✓</span>;
+      return <span title="Sent" className="opacity-70">✓</span>;
     case "delivered":
       return <span title="Delivered">✓✓</span>;
     case "read":
       return (
-        <span title="Read" className="text-blue-500">
+        <span title="Read" className="text-blue-300">
           ✓✓
         </span>
       );
     case "failed":
       return (
-        <span title="Failed" className="text-rose-500">
+        <span title="Failed" className="text-rose-300">
           ✕
         </span>
       );
@@ -219,7 +250,7 @@ function WindowTimer({ expiresAt }: { expiresAt: string | null | undefined }) {
   const minutes = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000));
 
   return (
-    <p className="mt-1.5 text-center text-[11px] text-muted-foreground">
+    <p className="mt-1.5 text-center text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
       24h window: {hours}h {minutes}m remaining
     </p>
   );

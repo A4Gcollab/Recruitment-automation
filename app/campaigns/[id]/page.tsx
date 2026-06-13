@@ -12,9 +12,5 @@ export default async function CampaignDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return (
-    <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-6 md:p-10">
-      <CampaignDetailView campaignId={id} />
-    </main>
-  );
+  return <CampaignDetailView campaignId={id} />;
 }

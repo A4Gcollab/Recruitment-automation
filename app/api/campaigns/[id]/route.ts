@@ -36,9 +36,13 @@ export const GET = withAuth<Ctx>(async (_req: NextRequest, ctx) => {
 
 const patchSchema = z.object({
   job_post_url: z.string().url().nullable().optional(),
-  interview_date: z.string().max(100).optional(),
-  interview_time: z.string().max(50).optional(),
-  interview_mode: z.string().max(50).optional(),
+  google_form_url: z.string().url().nullable().optional(),
+  zoom_link: z.string().url().nullable().optional(),
+  zoom_meeting_id: z.string().max(50).nullable().optional(),
+  zoom_passcode: z.string().max(50).nullable().optional(),
+  interview_date: z.string().max(100).nullable().optional(),
+  interview_time: z.string().max(50).nullable().optional(),
+  interview_mode: z.string().max(50).nullable().optional(),
 });
 
 export const PATCH = withAuth<Ctx>(async (req: NextRequest, ctx, session) => {
@@ -58,6 +62,10 @@ export const PATCH = withAuth<Ctx>(async (req: NextRequest, ctx, session) => {
   const d = parsed.data;
   const updates: Partial<typeof campaigns.$inferInsert> = {};
   if (d.job_post_url !== undefined) updates.jobPostUrl = d.job_post_url;
+  if (d.google_form_url !== undefined) updates.googleFormUrl = d.google_form_url;
+  if (d.zoom_link !== undefined) updates.zoomLink = d.zoom_link;
+  if (d.zoom_meeting_id !== undefined) updates.zoomMeetingId = d.zoom_meeting_id;
+  if (d.zoom_passcode !== undefined) updates.zoomPasscode = d.zoom_passcode;
   if (d.interview_date !== undefined) updates.interviewDate = d.interview_date;
   if (d.interview_time !== undefined) updates.interviewTime = d.interview_time;
   if (d.interview_mode !== undefined) updates.interviewMode = d.interview_mode;

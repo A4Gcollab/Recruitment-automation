@@ -246,9 +246,13 @@ export type CreateCampaignPayload = {
 
 export type PatchCampaignPayload = {
   job_post_url?: string | null;
-  interview_date?: string;
-  interview_time?: string;
-  interview_mode?: string;
+  google_form_url?: string | null;
+  zoom_link?: string | null;
+  zoom_meeting_id?: string | null;
+  zoom_passcode?: string | null;
+  interview_date?: string | null;
+  interview_time?: string | null;
+  interview_mode?: string | null;
 };
 
 export function fetchCampaigns(): Promise<CampaignListResponse> {

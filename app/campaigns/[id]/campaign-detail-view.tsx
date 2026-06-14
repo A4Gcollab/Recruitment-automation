@@ -9,6 +9,7 @@ import {
   ExternalLink,
   Pencil,
   Search,
+  Settings,
   Trash2,
   Upload,
 } from "lucide-react";
@@ -26,6 +27,7 @@ import {
   type CampaignDetail,
 } from "@/lib/api/candidates";
 import { CandidatesTable } from "./candidates-table";
+import { EditCampaignDialog } from "./edit-campaign-dialog";
 import { ImportDialog } from "./import-dialog";
 import { WhatsAppWorkspace } from "./whatsapp-workspace";
 
@@ -36,6 +38,7 @@ export function campaignQueryKey(id: string) {
 export function CampaignDetailView({ campaignId }: { campaignId: string }) {
   const [importOpen, setImportOpen] = useState(false);
   const [editingJobUrl, setEditingJobUrl] = useState(false);
+  const [editCampaignOpen, setEditCampaignOpen] = useState(false);
   const [chatTarget, setChatTarget] = useState<Candidate | null>(null);
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -140,6 +143,16 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
                   <Button
                     variant="outline"
                     size="icon"
+                    className="size-8 text-slate-500 hover:text-slate-700"
+                    disabled={!data}
+                    title="Edit campaign settings"
+                    onClick={() => setEditCampaignOpen(true)}
+                  >
+                    <Settings className="size-3.5" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
                     className="size-8 border-rose-200 text-rose-400 hover:border-rose-300 hover:bg-rose-50 hover:text-rose-600 dark:border-rose-900 dark:text-rose-500 dark:hover:bg-rose-950"
                     disabled={!data || deleteMutation.isPending}
                     title="Delete campaign"
@@ -186,6 +199,14 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
         open={importOpen}
         onOpenChange={setImportOpen}
       />
+
+      {data && (
+        <EditCampaignDialog
+          campaign={data}
+          open={editCampaignOpen}
+          onOpenChange={setEditCampaignOpen}
+        />
+      )}
     </div>
   );
 }

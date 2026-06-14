@@ -5,13 +5,8 @@ import { usePathname } from "next/navigation";
 import {
   Sparkles,
   Layers,
-  Users,
-  MessageCircle,
-  FileText,
-  BarChart2,
   Settings,
   LayoutDashboard,
-  ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -27,36 +22,6 @@ const navItems = [
     label: "Dashboard",
     icon: LayoutDashboard,
     prefixes: ["/overview"],
-  },
-  {
-    href: "#",
-    label: "Candidates",
-    icon: Users,
-    prefixes: ["/candidates"],
-  },
-  {
-    href: "#",
-    label: "Messages",
-    icon: MessageCircle,
-    prefixes: ["/messages"],
-  },
-  {
-    href: "#",
-    label: "Templates",
-    icon: FileText,
-    prefixes: ["/templates"],
-  },
-  {
-    href: "#",
-    label: "Evaluations",
-    icon: ClipboardList,
-    prefixes: ["/evaluations"],
-  },
-  {
-    href: "#",
-    label: "Reports",
-    icon: BarChart2,
-    prefixes: ["/reports"],
   },
   {
     href: "#",

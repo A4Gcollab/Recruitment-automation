@@ -282,10 +282,10 @@ export function fetchCandidates(
   );
 }
 
-// --- Import (applicants from Sheet) -------------------------------------
+// --- Import (applicants from Excel) -------------------------------------
 
 export type ImportPayload = {
-  google_sheet_url: string;
+  file: File;
   column_mapping: ColumnMapping;
 };
 
@@ -293,10 +293,17 @@ export function importCandidates(
   campaignId: Uuid,
   payload: ImportPayload,
 ): Promise<ImportResult> {
-  return postJson<ImportResult>(
-    `/api/campaigns/${campaignId}/import`,
-    payload,
-  );
+  const formData = new FormData();
+  formData.append("file", payload.file);
+  formData.append("column_mapping", JSON.stringify(payload.column_mapping));
+  return fetch(`/api/campaigns/${campaignId}/import`, {
+    method: "POST",
+    body: formData,
+  }).then(async (r) => {
+    const body = await r.json().catch(() => ({}));
+    if (!r.ok) throw new ApiClientError(r.status, body?.error ?? "Import failed");
+    return body as ImportResult;
+  });
 }
 
 // --- Emails -------------------------------------------------------------

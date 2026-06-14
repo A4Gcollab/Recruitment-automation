@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, MoreVertical, Phone, Send, X } from "lucide-react";
+import { Loader2, MoreVertical, Send, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -91,13 +91,6 @@ export function WhatsAppChatPanel({
           </p>
         </div>
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-7 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-          >
-            <Phone className="size-3.5" />
-          </Button>
           <Button
             variant="ghost"
             size="icon"

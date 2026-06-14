@@ -131,7 +131,7 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
                   <Button
                     onClick={() => setImportOpen(true)}
                     disabled={!data}
-                    className="h-8 bg-slate-900 text-xs text-white hover:bg-slate-700 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+                    className="h-8 bg-blue-600 text-xs text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
                     size="sm"
                   >
                     <Upload className="size-3.5" />

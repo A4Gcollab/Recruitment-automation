@@ -37,6 +37,7 @@ export function renderStage1(vars: {
   orgName?: string;
   formLink: string;
   deadline: string;
+  jobPostUrl?: string | null;
   // v2.2: per-campaign templates. When present, these override the legacy hardcoded
   // default below. Backend stores these on the campaigns row (`stage1_subject` /
   // `stage1_body`); the cron passes them through. HR's custom copy is used verbatim
@@ -55,6 +56,7 @@ export function renderStage1(vars: {
     deadline: vars.deadline,
     org_name: org,
     organization: org,
+    job_post_url: vars.jobPostUrl ?? "",
   };
 
   // ── v2.2 path: use per-campaign template if provided ──────────────────────

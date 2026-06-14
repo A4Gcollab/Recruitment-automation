@@ -52,16 +52,20 @@ export function candidatesQueryKey(campaignId: string) {
 type StageFilter =
   | "all"
   | "imported"
-  | "stage1_sent"
+  | "email_sent"
+  | "wa_sent"
   | "replied"
+  | "stage2"
   | "interview"
   | "no_contact";
 
 const FILTER_LABELS: Record<StageFilter, string> = {
   all: "All",
   imported: "Imported",
-  stage1_sent: "Stage-1 Sent",
-  replied: "Replied",
+  email_sent: "Email Sent",
+  wa_sent: "WA Sent",
+  replied: "WA Replied",
+  stage2: "Stage 2",
   interview: "Interview",
   no_contact: "No Contact",
 };
@@ -72,14 +76,20 @@ function matchesFilter(c: Candidate, filter: StageFilter): boolean {
       return true;
     case "imported":
       return c.stage === "imported";
-    case "stage1_sent":
+    case "email_sent":
+      // Email Stage-1 was sent
       return c.stage === "stage1_sent";
+    case "wa_sent":
+      // WhatsApp message was sent (any delivery status, including replied)
+      return c.wa_last_sent_at !== null;
     case "replied":
       return c.wa_status === "replied";
+    case "stage2":
+      return c.stage === "stage2_sent";
     case "interview":
       return c.stage === "interview_link_sent";
     case "no_contact":
-      return !c.wa_status;
+      return c.wa_last_sent_at === null;
     default:
       return true;
   }
@@ -129,15 +139,19 @@ export function CandidatesTable({
     const counts: Record<StageFilter, number> = {
       all: allCandidates.length,
       imported: 0,
-      stage1_sent: 0,
+      email_sent: 0,
+      wa_sent: 0,
       replied: 0,
+      stage2: 0,
       interview: 0,
       no_contact: 0,
     };
     for (const c of allCandidates) {
       if (matchesFilter(c, "imported")) counts.imported++;
-      if (matchesFilter(c, "stage1_sent")) counts.stage1_sent++;
+      if (matchesFilter(c, "email_sent")) counts.email_sent++;
+      if (matchesFilter(c, "wa_sent")) counts.wa_sent++;
       if (matchesFilter(c, "replied")) counts.replied++;
+      if (matchesFilter(c, "stage2")) counts.stage2++;
       if (matchesFilter(c, "interview")) counts.interview++;
       if (matchesFilter(c, "no_contact")) counts.no_contact++;
     }

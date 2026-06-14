@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull, ne, or } from "drizzle-orm";
 import { db } from "@/db";
 import { candidates, whatsappMessages } from "@/db/schema";
 import { logAudit } from "@/lib/audit";
@@ -79,10 +79,17 @@ async function handleStatusUpdate(status: StatusUpdate) {
     .limit(1);
 
   if (msg) {
+    // Never overwrite "replied" with a delivery status — "replied" takes
+    // priority over all delivery statuses (sent/delivered/read).
     await db
       .update(candidates)
       .set({ waStatus: newStatus, updatedAt: new Date() })
-      .where(eq(candidates.id, msg.candidateId));
+      .where(
+        and(
+          eq(candidates.id, msg.candidateId),
+          or(isNull(candidates.waStatus), ne(candidates.waStatus, "replied")),
+        ),
+      );
   }
 }
 

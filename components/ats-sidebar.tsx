@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   Sparkles,
   Layers,
+  MessageCircle,
   Settings,
   LayoutDashboard,
 } from "lucide-react";
@@ -22,6 +23,12 @@ const navItems = [
     label: "Dashboard",
     icon: LayoutDashboard,
     prefixes: ["/overview"],
+  },
+  {
+    href: "/messages",
+    label: "Messages",
+    icon: MessageCircle,
+    prefixes: ["/messages"],
   },
   {
     href: "#",

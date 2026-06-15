@@ -1,5 +1,5 @@
 import type { ColumnMapping } from "@/lib/types";
-import { getSheet, parseSheetUrl } from "./client";
+import { getSheet } from "./client";
 
 export type SheetRow = {
   row_number: number;

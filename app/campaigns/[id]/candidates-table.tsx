@@ -9,6 +9,7 @@ import {
   Inbox,
   Loader2,
   Mail,
+  MessageCircle,
   Send,
   Users,
 } from "lucide-react";
@@ -18,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StageBadge } from "@/components/ui/stage-badge";
+import { WaStatusBadge } from "@/components/ui/wa-status-badge";
 import {
   Table,
   TableBody,
@@ -40,6 +42,8 @@ import { ImportFilteredDialog } from "./import-filtered-dialog";
 import { PullResponsesDialog } from "./pull-responses-dialog";
 import { SendBulkDialog } from "./send-bulk-dialog";
 import { SendStage1Dialog } from "./send-stage1-dialog";
+import { SendWhatsAppDialog } from "./send-whatsapp-dialog";
+import { WhatsAppChatPanel } from "./whatsapp-chat-panel";
 
 export function candidatesQueryKey(campaignId: string) {
   return ["candidates", { campaign_id: campaignId }] as const;
@@ -58,6 +62,8 @@ export function CandidatesTable({
   const [sendTarget, setSendTarget] = useState<Candidate | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkSendOpen, setBulkSendOpen] = useState(false);
+  const [waBulkSendOpen, setWaBulkSendOpen] = useState(false);
+  const [chatTarget, setChatTarget] = useState<Candidate | null>(null);
   const [importFilteredOpen, setImportFilteredOpen] = useState(false);
   const [pullResponsesOpen, setPullResponsesOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -253,7 +259,24 @@ export function CandidatesTable({
             })}
           >
             <Send />
-            Send Google Form to selected
+            Send Email
+            {hasSelection ? ` (${selectedCount})` : ""}
+          </Button>
+
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => setWaBulkSendOpen(true)}
+            disabled={!hasSelection}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            title={
+              hasSelection
+                ? `Send WhatsApp to ${selectedCount} candidate${selectedCount === 1 ? "" : "s"}`
+                : "Select one or more candidates first"
+            }
+          >
+            <MessageCircle />
+            Send WhatsApp
             {hasSelection ? ` (${selectedCount})` : ""}
           </Button>
         </div>
@@ -281,11 +304,13 @@ export function CandidatesTable({
               </TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
+              <TableHead>Phone</TableHead>
               <TableHead>LinkedIn</TableHead>
               <TableHead>Stage</TableHead>
               <TableHead>Verdict</TableHead>
               <TableHead>Sent</TableHead>
-              <TableHead className="w-[140px] text-right">Actions</TableHead>
+              <TableHead>WA</TableHead>
+              <TableHead className="w-[180px] text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -317,6 +342,9 @@ export function CandidatesTable({
                     {candidate.email ?? <span className="italic">—</span>}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
+                    {candidate.phone ?? <span className="italic">—</span>}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
                     {candidate.linkedin_url ? (
                       <a
                         href={candidate.linkedin_url}
@@ -339,21 +367,39 @@ export function CandidatesTable({
                   <TableCell className="text-muted-foreground">
                     {formatSentAt(candidate.stage1_sent_at)}
                   </TableCell>
+                  <TableCell>
+                    <WaStatusBadge status={candidate.wa_status} />
+                  </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={!candidate.email}
-                      title={
-                        candidate.email
-                          ? "Send the Stage-1 screening form"
-                          : "Candidate has no email on file"
-                      }
-                      onClick={() => setSendTarget(candidate)}
-                    >
-                      <Mail />
-                      Send Stage-1
-                    </Button>
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={!candidate.email}
+                        title={
+                          candidate.email
+                            ? "Send the Stage-1 screening form"
+                            : "Candidate has no email on file"
+                        }
+                        onClick={() => setSendTarget(candidate)}
+                      >
+                        <Mail className="size-3.5" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={!candidate.phone}
+                        title={
+                          candidate.phone
+                            ? "Open WhatsApp chat"
+                            : "No phone number"
+                        }
+                        onClick={() => setChatTarget(candidate)}
+                        className="text-emerald-600 hover:text-emerald-700"
+                      >
+                        <MessageCircle className="size-3.5" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
@@ -382,6 +428,14 @@ export function CandidatesTable({
         onSent={clearSelection}
       />
 
+      <SendWhatsAppDialog
+        campaignId={campaignId}
+        open={waBulkSendOpen}
+        onOpenChange={setWaBulkSendOpen}
+        candidates={selectedCandidates}
+        onSent={clearSelection}
+      />
+
       <ImportFilteredDialog
         campaignId={campaignId}
         open={importFilteredOpen}
@@ -394,6 +448,13 @@ export function CandidatesTable({
         open={pullResponsesOpen}
         onOpenChange={setPullResponsesOpen}
       />
+
+      {chatTarget ? (
+        <WhatsAppChatPanel
+          candidate={chatTarget}
+          onClose={() => setChatTarget(null)}
+        />
+      ) : null}
     </>
   );
 }
@@ -456,7 +517,7 @@ function LoadingRows() {
     <>
       {Array.from({ length: 5 }).map((_, idx) => (
         <TableRow key={idx}>
-          {Array.from({ length: 8 }).map((__, cellIdx) => (
+          {Array.from({ length: 10 }).map((__, cellIdx) => (
             <TableCell key={cellIdx}>
               <Skeleton className="h-4 w-full max-w-[160px]" />
             </TableCell>
@@ -470,7 +531,7 @@ function LoadingRows() {
 function EmptyRow({ onImport }: { onImport: () => void }) {
   return (
     <TableRow>
-      <TableCell colSpan={8}>
+      <TableCell colSpan={10}>
         <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
           <Inbox className="size-10 text-muted-foreground" aria-hidden />
           <div>
@@ -505,7 +566,7 @@ function ErrorRow({
 
   return (
     <TableRow>
-      <TableCell colSpan={8}>
+      <TableCell colSpan={10}>
         <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
           <p className="text-base font-medium text-destructive">{message}</p>
           <Button onClick={onRetry} variant="outline" size="sm">

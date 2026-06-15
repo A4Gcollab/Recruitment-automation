@@ -63,6 +63,12 @@ export type Candidate = {
   // v0.2 — reminder timing
   stage1_sent_at: IsoDateTime | null;
   reminder_sent_at: IsoDateTime | null;
+
+  // v0.3 — WhatsApp
+  wa_status: string | null;
+  wa_last_sent_at: IsoDateTime | null;
+  wa_last_reply: string | null;
+  wa_last_reply_at: IsoDateTime | null;
 };
 
 export type RoleConfig = {

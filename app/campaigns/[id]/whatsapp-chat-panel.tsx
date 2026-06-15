@@ -153,7 +153,7 @@ function ChatBubble({ message }: { message: WhatsAppMessage }) {
   const time = formatTime(message.created_at);
 
   return (
-    <div className={`flex ${isOutbound ? "justify-start" : "justify-end"}`}>
+    <div className={`flex ${isOutbound ? "justify-end" : "justify-start"}`}>
       <div
         className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
           isOutbound

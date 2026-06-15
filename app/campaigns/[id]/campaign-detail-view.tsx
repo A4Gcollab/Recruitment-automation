@@ -12,17 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import {
   ApiClientError,
   fetchCampaign,
   type CampaignDetail,
@@ -86,32 +75,19 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
               <Upload />
               Import candidates
             </Button>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="icon" disabled={!data} title="Delete campaign">
-                  <Trash2 className="size-4" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete campaign?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will permanently delete <strong>{data?.role_name}</strong> and all
-                    associated candidates, emails, WhatsApp messages, and form responses.
-                    This cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    onClick={() => deleteMutation.mutate()}
-                  >
-                    Delete everything
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            <Button
+              variant="destructive"
+              size="icon"
+              disabled={!data || deleteMutation.isPending}
+              title="Delete campaign"
+              onClick={() => {
+                if (confirm(`Delete "${data?.role_name}"? This removes all candidates, emails, and WhatsApp data. This cannot be undone.`)) {
+                  deleteMutation.mutate();
+                }
+              }}
+            >
+              <Trash2 className="size-4" />
+            </Button>
           </div>
         </div>
       </div>

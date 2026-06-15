@@ -138,7 +138,9 @@ export function WhatsAppChatPanel({
           </>
         ) : (
           <p className="text-center text-xs text-muted-foreground">
-            24h reply window expired. Send a template message to re-engage.
+            {windowExpiresAt
+              ? "24h reply window closed. Send a template message to re-engage."
+              : "No reply received yet. Send a WhatsApp template to start the conversation."}
           </p>
         )}
       </div>

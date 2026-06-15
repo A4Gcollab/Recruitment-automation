@@ -194,6 +194,16 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
   return parseOrThrow<T>(res);
 }
 
+async function patchJson<T>(url: string, body: unknown): Promise<T> {
+  const res = await fetch(url, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return parseOrThrow<T>(res);
+}
+
 async function postMultipart<T>(url: string, form: FormData): Promise<T> {
   // No Content-Type header — browser sets multipart boundary automatically.
   const res = await fetch(url, {
@@ -221,6 +231,7 @@ export type CreateCampaignPayload = {
   interview_date?: string;
   interview_time?: string;
   interview_mode?: string;
+  job_post_url?: string;
 
   // v0.2 additions — all optional; server falls back to seeded defaults.
   stage1_subject?: string;
@@ -231,6 +242,13 @@ export type CreateCampaignPayload = {
   interview_body?: string;
   reminder_after_days?: number;
   form_response_sheet_url?: string;
+};
+
+export type PatchCampaignPayload = {
+  job_post_url?: string | null;
+  interview_date?: string;
+  interview_time?: string;
+  interview_mode?: string;
 };
 
 export function fetchCampaigns(): Promise<CampaignListResponse> {
@@ -245,6 +263,13 @@ export function createCampaign(
   payload: CreateCampaignPayload,
 ): Promise<Campaign> {
   return postJson<Campaign>("/api/campaigns", payload);
+}
+
+export function patchCampaign(
+  id: Uuid,
+  payload: PatchCampaignPayload,
+): Promise<Campaign> {
+  return patchJson<Campaign>(`/api/campaigns/${id}`, payload);
 }
 
 // --- Candidates ---------------------------------------------------------

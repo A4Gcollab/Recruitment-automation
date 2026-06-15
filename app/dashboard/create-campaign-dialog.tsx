@@ -53,6 +53,7 @@ type FormState = CreateCampaignPayload & {
   stage1_body: string;
   reminder_after_days: number;
   form_response_sheet_url: string;
+  job_post_url: string;
 };
 
 const emptyForm: FormState = {
@@ -64,6 +65,7 @@ const emptyForm: FormState = {
   interview_date: "",
   interview_time: "",
   interview_mode: "Zoom",
+  job_post_url: "",
   stage1_subject: DEFAULT_STAGE1_SUBJECT,
   stage1_body: DEFAULT_STAGE1_BODY,
   reminder_after_days: DEFAULT_REMINDER_DAYS,
@@ -125,6 +127,7 @@ export function CreateCampaignDialog({
       "interview_date",
       "interview_time",
       "interview_mode",
+      "job_post_url",
       "stage1_subject",
       "stage1_body",
       "form_response_sheet_url",
@@ -178,15 +181,26 @@ export function CreateCampaignDialog({
             required
             disabled={pending}
           />
-          <Field
-            id="google_form_url"
-            label="Google Form URL"
-            type="url"
-            value={form.google_form_url}
-            onChange={(v) => setForm({ ...form, google_form_url: v })}
-            placeholder="https://forms.gle/…"
-            disabled={pending}
-          />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field
+              id="google_form_url"
+              label="Google Form URL"
+              type="url"
+              value={form.google_form_url}
+              onChange={(v) => setForm({ ...form, google_form_url: v })}
+              placeholder="https://forms.gle/…"
+              disabled={pending}
+            />
+            <Field
+              id="job_post_url"
+              label="Job post URL"
+              type="url"
+              value={form.job_post_url}
+              onChange={(v) => setForm({ ...form, job_post_url: v })}
+              placeholder="https://linkedin.com/jobs/…"
+              disabled={pending}
+            />
+          </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field

@@ -3,17 +3,19 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Trash2, Upload } from "lucide-react";
+import { ArrowLeft, ExternalLink, Pencil, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ApiClientError,
   fetchCampaign,
+  patchCampaign,
   type CampaignDetail,
 } from "@/lib/api/candidates";
 import { CandidatesTable } from "./candidates-table";
@@ -25,7 +27,9 @@ export function campaignQueryKey(id: string) {
 
 export function CampaignDetailView({ campaignId }: { campaignId: string }) {
   const [importOpen, setImportOpen] = useState(false);
+  const [editingJobUrl, setEditingJobUrl] = useState(false);
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: campaignQueryKey(campaignId),
@@ -45,6 +49,17 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
       router.push("/dashboard");
     },
     onError: () => toast.error("Failed to delete campaign"),
+  });
+
+  const jobUrlMutation = useMutation({
+    mutationFn: (url: string | null) =>
+      patchCampaign(campaignId, { job_post_url: url }),
+    onSuccess: () => {
+      toast.success("Job post URL saved");
+      queryClient.invalidateQueries({ queryKey: campaignQueryKey(campaignId) });
+      setEditingJobUrl(false);
+    },
+    onError: () => toast.error("Failed to save job post URL"),
   });
 
   return (
@@ -67,7 +82,14 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
             ) : isError ? (
               <CampaignError error={error} onRetry={() => refetch()} />
             ) : data ? (
-              <CampaignHeader campaign={data} />
+              <CampaignHeader
+                campaign={data}
+                editingJobUrl={editingJobUrl}
+                onEditJobUrl={() => setEditingJobUrl(true)}
+                onSaveJobUrl={(url) => jobUrlMutation.mutate(url)}
+                onCancelJobUrl={() => setEditingJobUrl(false)}
+                savingJobUrl={jobUrlMutation.isPending}
+              />
             ) : null}
           </div>
           <div className="flex items-center gap-2">
@@ -107,8 +129,24 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
   );
 }
 
-function CampaignHeader({ campaign }: { campaign: CampaignDetail }) {
+function CampaignHeader({
+  campaign,
+  editingJobUrl,
+  onEditJobUrl,
+  onSaveJobUrl,
+  onCancelJobUrl,
+  savingJobUrl,
+}: {
+  campaign: CampaignDetail;
+  editingJobUrl: boolean;
+  onEditJobUrl: () => void;
+  onSaveJobUrl: (url: string | null) => void;
+  onCancelJobUrl: () => void;
+  savingJobUrl: boolean;
+}) {
+  const [jobUrlInput, setJobUrlInput] = useState(campaign.job_post_url ?? "");
   const total = campaign.counts_by_stage.reduce((acc, s) => acc + s.count, 0);
+
   return (
     <div>
       <h1 className="text-2xl font-semibold tracking-tight">
@@ -124,6 +162,66 @@ function CampaignHeader({ campaign }: { campaign: CampaignDetail }) {
             ? ` · Interview ${campaign.interview_date}`
             : ""}
         </span>
+      </div>
+      <div className="mt-2">
+        {editingJobUrl ? (
+          <div className="flex items-center gap-2">
+            <Input
+              type="url"
+              value={jobUrlInput}
+              onChange={(e) => setJobUrlInput(e.target.value)}
+              placeholder="https://linkedin.com/jobs/…"
+              className="h-7 w-72 text-xs"
+              disabled={savingJobUrl}
+              autoFocus
+            />
+            <Button
+              size="sm"
+              className="h-7 text-xs"
+              disabled={savingJobUrl}
+              onClick={() => onSaveJobUrl(jobUrlInput.trim() || null)}
+            >
+              Save
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs"
+              disabled={savingJobUrl}
+              onClick={onCancelJobUrl}
+            >
+              Cancel
+            </Button>
+          </div>
+        ) : campaign.job_post_url ? (
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span>Job post:</span>
+            <a
+              href={campaign.job_post_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-0.5 underline hover:text-foreground"
+            >
+              {new URL(campaign.job_post_url).hostname}
+              <ExternalLink className="size-3" />
+            </a>
+            <button
+              onClick={onEditJobUrl}
+              className="ml-1 text-muted-foreground hover:text-foreground"
+              title="Edit job post URL"
+            >
+              <Pencil className="size-3" />
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={onEditJobUrl}
+            className="flex items-center gap-1 text-xs text-amber-600 hover:text-amber-700 dark:text-amber-400"
+          >
+            <Pencil className="size-3" />
+            Set job post URL (needed for WhatsApp template)
+          </button>
+        )}
       </div>
     </div>
   );

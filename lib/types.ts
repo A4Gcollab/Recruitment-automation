@@ -27,6 +27,7 @@ export type Campaign = {
   interview_body: string;
   reminder_after_days: number;
   form_response_sheet_url: string | null;
+  job_post_url: string | null;
 };
 
 export type Candidate = {

@@ -102,7 +102,7 @@ export const POST = withAuth<Ctx>(async (req: NextRequest, ctx, session) => {
       candidateId: cid,
       campaignId,
       templateName: template_name,
-      templateParams: [firstName, campaign.roleName, formLink],
+      templateParams: [firstName, campaign.roleName, formLink, campaign.jobPostUrl ?? ""],
       scheduledFor: new Date(),
       idempotencyKey: idemKey,
     });

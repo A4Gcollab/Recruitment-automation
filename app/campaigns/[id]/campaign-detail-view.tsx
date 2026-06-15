@@ -2,8 +2,11 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useMutation } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Upload } from "lucide-react";
+import { ArrowLeft, Trash2, Upload } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,10 +25,26 @@ export function campaignQueryKey(id: string) {
 
 export function CampaignDetailView({ campaignId }: { campaignId: string }) {
   const [importOpen, setImportOpen] = useState(false);
+  const router = useRouter();
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: campaignQueryKey(campaignId),
     queryFn: () => fetchCampaign(campaignId),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () =>
+      fetch(`/api/campaigns/${campaignId}`, { method: "DELETE" }).then((r) => {
+        if (!r.ok) throw new Error("Failed to delete campaign");
+        return r.json();
+      }),
+    onSuccess: () => {
+      toast.success("Campaign deleted", {
+        description: "All candidates and related data have been removed.",
+      });
+      router.push("/dashboard");
+    },
+    onError: () => toast.error("Failed to delete campaign"),
   });
 
   return (
@@ -51,10 +70,25 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
               <CampaignHeader campaign={data} />
             ) : null}
           </div>
-          <Button onClick={() => setImportOpen(true)} disabled={!data}>
-            <Upload />
-            Import candidates
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button onClick={() => setImportOpen(true)} disabled={!data}>
+              <Upload />
+              Import candidates
+            </Button>
+            <Button
+              variant="destructive"
+              size="icon"
+              disabled={!data || deleteMutation.isPending}
+              title="Delete campaign"
+              onClick={() => {
+                if (confirm(`Delete "${data?.role_name}"? This removes all candidates, emails, and WhatsApp data. This cannot be undone.`)) {
+                  deleteMutation.mutate();
+                }
+              }}
+            >
+              <Trash2 className="size-4" />
+            </Button>
+          </div>
         </div>
       </div>
 

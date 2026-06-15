@@ -29,6 +29,7 @@ const createSchema = z.object({
   interview_body: z.string().min(1).optional(),
   reminder_after_days: z.number().int().min(1).max(30).optional(),
   form_response_sheet_url: z.string().url().optional(),
+  job_post_url: z.string().url().optional(),
 });
 
 export const POST = withAuth(async (req, _ctx, session) => {
@@ -62,6 +63,7 @@ export const POST = withAuth(async (req, _ctx, session) => {
       ...(d.interview_body !== undefined && { interviewBody: d.interview_body }),
       ...(d.reminder_after_days !== undefined && { reminderAfterDays: d.reminder_after_days }),
       formResponseSheetUrl: d.form_response_sheet_url ?? null,
+      jobPostUrl: d.job_post_url ?? null,
     })
     .returning();
 

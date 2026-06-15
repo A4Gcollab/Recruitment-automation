@@ -24,5 +24,6 @@ export function serializeCampaign(row: CampaignRow): Campaign {
     interview_body: row.interviewBody,
     reminder_after_days: row.reminderAfterDays,
     form_response_sheet_url: row.formResponseSheetUrl,
+    job_post_url: row.jobPostUrl,
   };
 }

@@ -174,10 +174,46 @@ function extractCell(
   headerName: string | undefined,
 ): string | null {
   if (!headerName) return null;
-  const val = rowData[headerName];
+  // Exact match first
+  let val = rowData[headerName];
+  // Case-insensitive fallback
+  if (val === undefined || val === null) {
+    const lower = headerName.toLowerCase();
+    for (const [key, v] of Object.entries(rowData)) {
+      if (key.toLowerCase() === lower) { val = v; break; }
+    }
+  }
   if (val === undefined || val === null) return null;
   const trimmed = String(val).trim();
   return trimmed === "" ? null : trimmed;
+}
+
+/** Resolve each mapping field to an actual sheet header, using aliases as fallback.
+ *  e.g. if mapping says "Full Name" but sheet has "Name", alias lookup finds it. */
+function resolveMapping(
+  mapping: ColumnMapping,
+  sheetHeaders: string[],
+): ColumnMapping {
+  const resolved = { ...mapping };
+  const headersLower = sheetHeaders.map(h => h.toLowerCase().trim());
+
+  for (const [field, aliases] of Object.entries(HEADER_ALIASES)) {
+    const key = field as keyof ColumnMapping;
+    const userValue = mapping[key];
+    if (!userValue) continue;
+    // Check if the user-provided value matches any actual header (case-insensitive)
+    const directMatch = headersLower.includes(userValue.toLowerCase().trim());
+    if (directMatch) continue; // already good
+    // Try aliases: find a sheet header that matches one of the known aliases
+    for (const alias of aliases) {
+      const idx = headersLower.indexOf(alias);
+      if (idx !== -1) {
+        resolved[key] = sheetHeaders[idx];
+        break;
+      }
+    }
+  }
+  return resolved;
 }
 
 export async function fetchSheetRows(args: {
@@ -216,6 +252,7 @@ export async function fetchSheetRows(args: {
   }
 
   const headerRow = sheet.headerValues ?? [];
+  const effectiveMapping = resolveMapping(mapping, headerRow);
 
   const rows: SheetRow[] = [];
   const errors: SheetFetchError[] = [];
@@ -234,19 +271,19 @@ export async function fetchSheetRows(args: {
       }
 
       try {
-        const full_name = extractCell(raw, mapping.full_name);
-        const role = extractCell(raw, mapping.role);
-        const email = extractCell(raw, mapping.email);
-        const phone = extractCell(raw, mapping.phone);
-        const linkedin_url = extractCell(raw, mapping.linkedin_url);
-        const headline = extractCell(raw, mapping.headline);
-        const current_title = extractCell(raw, mapping.current_title);
-        const current_company = extractCell(raw, mapping.current_company);
-        const school = extractCell(raw, mapping.school);
-        const location = extractCell(raw, mapping.location);
-        const application_date = extractCell(raw, mapping.application_date);
-        const resume_url = extractCell(raw, mapping.resume_url);
-        const applicantsync_score = extractCell(raw, mapping.applicantsync_score);
+        const full_name = extractCell(raw, effectiveMapping.full_name);
+        const role = extractCell(raw, effectiveMapping.role);
+        const email = extractCell(raw, effectiveMapping.email);
+        const phone = extractCell(raw, effectiveMapping.phone);
+        const linkedin_url = extractCell(raw, effectiveMapping.linkedin_url);
+        const headline = extractCell(raw, effectiveMapping.headline);
+        const current_title = extractCell(raw, effectiveMapping.current_title);
+        const current_company = extractCell(raw, effectiveMapping.current_company);
+        const school = extractCell(raw, effectiveMapping.school);
+        const location = extractCell(raw, effectiveMapping.location);
+        const application_date = extractCell(raw, effectiveMapping.application_date);
+        const resume_url = extractCell(raw, effectiveMapping.resume_url);
+        const applicantsync_score = extractCell(raw, effectiveMapping.applicantsync_score);
 
         if (!full_name && !email && !role && !linkedin_url) {
           errors.push({ row: rowNumber, reason: "empty row" });

@@ -82,6 +82,7 @@ export const POST = withAuth<Ctx>(async (req: NextRequest, ctx, session) => {
   if (!parsed.success) return ERR.validation({ issues: parsed.error.flatten() });
 
   const { google_sheet_url, column_mapping } = parsed.data;
+  console.log("[import] column_mapping:", JSON.stringify(column_mapping));
 
   const [campaign] = await db
     .select()
@@ -93,9 +94,15 @@ export const POST = withAuth<Ctx>(async (req: NextRequest, ctx, session) => {
   try {
     sheet = await fetchSheetRows({ url: google_sheet_url, mapping: column_mapping });
   } catch (err) {
+    console.error("[import] fetchSheetRows error:", err);
     if (err instanceof SheetUnreachableError) return ERR.sheetUnreachable(err.message);
     if (err instanceof SheetUpstreamError) return ERR.sheetUpstream(err.message);
     return ERR.sheetUpstream(err instanceof Error ? err.message : "unknown sheet error");
+  }
+
+  console.log("[import] sheet rows:", sheet.rows.length, "sheet errors:", sheet.errors.length);
+  if (sheet.rows.length > 0) {
+    console.log("[import] first row sample:", JSON.stringify(sheet.rows[0]));
   }
 
   const errors: ImportError[] = [...sheet.errors];
@@ -206,5 +213,6 @@ export const POST = withAuth<Ctx>(async (req: NextRequest, ctx, session) => {
     skipped: errors.length,
     errors,
   };
+  console.log("[import] result:", JSON.stringify({ imported: body.imported, skipped: body.skipped, errors: body.errors.slice(0, 5) }));
   return NextResponse.json(body);
 });

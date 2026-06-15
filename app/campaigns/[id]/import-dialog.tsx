@@ -30,6 +30,7 @@ type Step = 1 | 2 | 3;
 type MappingState = {
   full_name: string;
   email: string;
+  phone: string;
   linkedin_url: string;
   headline: string;
   location: string;
@@ -38,8 +39,9 @@ type MappingState = {
 };
 
 const initialMapping: MappingState = {
-  full_name: "Full Name",
+  full_name: "Name",
   email: "Email",
+  phone: "Phone",
   linkedin_url: "LinkedIn URL",
   headline: "Headline",
   location: "Location",
@@ -114,6 +116,7 @@ export function ImportDialog({
       };
       const optional: (keyof MappingState)[] = [
         "email",
+        "phone",
         "linkedin_url",
         "headline",
         "location",
@@ -209,6 +212,12 @@ export function ImportDialog({
                 onChange={(v) => setMapping((m) => ({ ...m, email: v }))}
               />
               <MappingField
+                id="map-phone"
+                label="Phone"
+                value={mapping.phone}
+                onChange={(v) => setMapping((m) => ({ ...m, phone: v }))}
+              />
+              <MappingField
                 id="map-linkedin"
                 label="LinkedIn URL"
                 value={mapping.linkedin_url}
@@ -257,6 +266,7 @@ export function ImportDialog({
                   value={mapping.full_name}
                 />
                 <MappingSummaryLine field="email" value={mapping.email} />
+                <MappingSummaryLine field="phone" value={mapping.phone} />
                 <MappingSummaryLine
                   field="linkedin_url"
                   value={mapping.linkedin_url}

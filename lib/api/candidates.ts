@@ -56,6 +56,12 @@ export type Candidate = CandidateV1 & {
   // Reminder timing
   stage1_sent_at: string | null;
   reminder_sent_at: string | null;
+
+  // WhatsApp status
+  wa_status: string | null;
+  wa_last_sent_at: string | null;
+  wa_last_reply: string | null;
+  wa_last_reply_at: string | null;
 };
 
 export type CandidatesListResponse = Omit<
@@ -356,4 +362,65 @@ export function pullResponses(
     `/api/campaigns/${campaignId}/pull-responses`,
     payload,
   );
+}
+
+// --- WhatsApp ---------------------------------------------------------------
+
+export type WhatsAppBulkSendPayload = {
+  template_name: string;
+  candidate_ids: Uuid[];
+};
+
+export type WhatsAppBulkSendResult = {
+  queued: number;
+  skipped: Array<{ candidate_id: Uuid; reason: string }>;
+};
+
+export function sendWhatsAppBulk(
+  campaignId: Uuid,
+  payload: WhatsAppBulkSendPayload,
+): Promise<WhatsAppBulkSendResult> {
+  return postJson<WhatsAppBulkSendResult>(
+    `/api/campaigns/${campaignId}/send-whatsapp`,
+    payload,
+  );
+}
+
+export type WhatsAppMessage = {
+  id: Uuid;
+  direction: "outbound" | "inbound";
+  wa_message_id: string | null;
+  template_name: string | null;
+  body: string | null;
+  status: string;
+  created_at: string;
+};
+
+export type WhatsAppConversation = {
+  messages: WhatsAppMessage[];
+  window_open: boolean;
+  window_expires_at: string | null;
+};
+
+export function fetchWhatsAppMessages(
+  candidateId: Uuid,
+): Promise<WhatsAppConversation> {
+  return getJson<WhatsAppConversation>(
+    `/api/candidates/${candidateId}/whatsapp-messages`,
+  );
+}
+
+export type SendReplyPayload = {
+  candidate_id: Uuid;
+  message: string;
+};
+
+export type SendReplyResult =
+  | { sent: true; message_id: string }
+  | { sent: false; error: { code: string; message: string } };
+
+export function sendWhatsAppReply(
+  payload: SendReplyPayload,
+): Promise<SendReplyResult> {
+  return postJson<SendReplyResult>("/api/whatsapp/send-reply", payload);
 }

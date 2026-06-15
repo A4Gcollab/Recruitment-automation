@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
     .limit(20);
 
   let processed = 0;
-  let skipped = 0;
+  const skipped = 0;
   let failed = 0;
 
   for (let i = 0; i < pending.length; i++) {

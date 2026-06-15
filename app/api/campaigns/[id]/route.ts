@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { campaigns, candidates } from "@/db/schema";
 import { ERR } from "@/lib/api/response";
 import { withAuth } from "@/lib/api/withAuth";
+import { logAudit } from "@/lib/audit";
 import { serializeCampaign } from "@/lib/serializers/campaign";
 
 export const runtime = "nodejs";
@@ -30,4 +31,23 @@ export const GET = withAuth<Ctx>(async (_req: NextRequest, ctx) => {
     ...serializeCampaign(campaign),
     counts_by_stage: countsByStage.map((r) => ({ stage: r.stage, count: r.count })),
   });
+});
+
+export const DELETE = withAuth<Ctx>(async (_req: NextRequest, ctx, session) => {
+  const { id } = await ctx.params;
+
+  const [campaign] = await db.select().from(campaigns).where(eq(campaigns.id, id));
+  if (!campaign) return ERR.notFound("Campaign");
+
+  await db.delete(campaigns).where(eq(campaigns.id, id));
+
+  await logAudit({
+    actor: session.actor,
+    action: "campaign.deleted",
+    entityType: "campaign",
+    entityId: id,
+    metadata: { role_name: campaign.roleName },
+  });
+
+  return NextResponse.json({ deleted: true });
 });

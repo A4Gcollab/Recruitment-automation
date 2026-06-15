@@ -2,12 +2,26 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useMutation } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Upload } from "lucide-react";
+import { ArrowLeft, Trash2, Upload } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   ApiClientError,
   fetchCampaign,
@@ -22,10 +36,26 @@ export function campaignQueryKey(id: string) {
 
 export function CampaignDetailView({ campaignId }: { campaignId: string }) {
   const [importOpen, setImportOpen] = useState(false);
+  const router = useRouter();
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: campaignQueryKey(campaignId),
     queryFn: () => fetchCampaign(campaignId),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () =>
+      fetch(`/api/campaigns/${campaignId}`, { method: "DELETE" }).then((r) => {
+        if (!r.ok) throw new Error("Failed to delete campaign");
+        return r.json();
+      }),
+    onSuccess: () => {
+      toast.success("Campaign deleted", {
+        description: "All candidates and related data have been removed.",
+      });
+      router.push("/dashboard");
+    },
+    onError: () => toast.error("Failed to delete campaign"),
   });
 
   return (
@@ -51,10 +81,38 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
               <CampaignHeader campaign={data} />
             ) : null}
           </div>
-          <Button onClick={() => setImportOpen(true)} disabled={!data}>
-            <Upload />
-            Import candidates
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button onClick={() => setImportOpen(true)} disabled={!data}>
+              <Upload />
+              Import candidates
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="icon" disabled={!data} title="Delete campaign">
+                  <Trash2 className="size-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete campaign?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete <strong>{data?.role_name}</strong> and all
+                    associated candidates, emails, WhatsApp messages, and form responses.
+                    This cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    onClick={() => deleteMutation.mutate()}
+                  >
+                    Delete everything
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </div>
       </div>
 

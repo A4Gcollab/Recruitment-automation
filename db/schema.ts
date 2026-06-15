@@ -41,6 +41,7 @@ export const campaigns = pgTable("campaigns", {
   interviewBody: text("interview_body").notNull().default(DEFAULT_INTERVIEW_BODY),
   reminderAfterDays: integer("reminder_after_days").notNull().default(DEFAULT_REMINDER_AFTER_DAYS),
   formResponseSheetUrl: text("form_response_sheet_url"),
+  jobPostUrl: text("job_post_url"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

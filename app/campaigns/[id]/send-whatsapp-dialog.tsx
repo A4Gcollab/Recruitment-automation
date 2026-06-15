@@ -17,6 +17,7 @@ import {
   ApiClientError,
   sendWhatsAppBulk,
   type Candidate,
+  type CampaignDetail,
   type WhatsAppBulkSendResult,
 } from "@/lib/api/candidates";
 import { campaignQueryKey } from "./campaign-detail-view";
@@ -26,12 +27,14 @@ const PREVIEW_COUNT = 5;
 
 export function SendWhatsAppDialog({
   campaignId,
+  campaign,
   candidates,
   open,
   onOpenChange,
   onSent,
 }: {
   campaignId: string;
+  campaign?: CampaignDetail;
   candidates: Candidate[];
   open: boolean;
   onOpenChange: (next: boolean) => void;
@@ -127,6 +130,25 @@ export function SendWhatsAppDialog({
               skipped (no phone number on file).
             </p>
           ) : null}
+
+          {campaign?.job_post_url ? (
+            <p className="text-xs text-muted-foreground">
+              Job post link:{" "}
+              <a
+                href={campaign.job_post_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline"
+              >
+                {campaign.job_post_url}
+              </a>
+            </p>
+          ) : (
+            <p className="text-xs text-amber-600 dark:text-amber-400">
+              No job post URL set on this campaign — {"{{4}}"} will be blank in the message.
+              Add it via the campaign settings.
+            </p>
+          )}
         </div>
 
         <DialogFooter className="gap-2 sm:justify-end">

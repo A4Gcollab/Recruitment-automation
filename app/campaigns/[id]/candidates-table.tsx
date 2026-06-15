@@ -430,6 +430,7 @@ export function CandidatesTable({
 
       <SendWhatsAppDialog
         campaignId={campaignId}
+        campaign={campaign}
         open={waBulkSendOpen}
         onOpenChange={setWaBulkSendOpen}
         candidates={selectedCandidates}

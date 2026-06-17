@@ -22,5 +22,12 @@
     "default_title": "A4G LinkedIn Q&A Sync"
   },
 
-  "options_page": "options.html"
+  "options_page": "options.html",
+
+  "web_accessible_resources": [
+    {
+      "resources": ["popup.html", "options.html"],
+      "matches": ["https://www.linkedin.com/*"]
+    }
+  ]
 }

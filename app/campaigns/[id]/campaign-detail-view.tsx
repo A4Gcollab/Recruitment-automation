@@ -29,6 +29,7 @@ import {
 import { CandidatesTable } from "./candidates-table";
 import { EditCampaignDialog } from "./edit-campaign-dialog";
 import { ImportDialog } from "./import-dialog";
+import { ResponsesTab } from "./responses-tab";
 import { WhatsAppWorkspace } from "./whatsapp-workspace";
 
 export function campaignQueryKey(id: string) {
@@ -40,6 +41,7 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
   const [editingJobUrl, setEditingJobUrl] = useState(false);
   const [editCampaignOpen, setEditCampaignOpen] = useState(false);
   const [chatTarget, setChatTarget] = useState<Candidate | null>(null);
+  const [activeTab, setActiveTab] = useState<"candidates" | "responses">("candidates");
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialChatId = searchParams.get("chat");
@@ -175,16 +177,37 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
             ) : null}
           </div>
 
-          {/* Candidates table */}
+          {/* Tab switcher */}
+          <div className="flex gap-1 border-b border-slate-200/80 bg-white px-6 dark:border-slate-800 dark:bg-slate-900">
+            {(["candidates", "responses"] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`pb-2.5 pt-2 text-sm font-medium capitalize transition-colors border-b-2 -mb-px ${
+                  activeTab === tab
+                    ? "border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400"
+                    : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                }`}
+              >
+                {tab === "responses" ? "Form Responses" : "Candidates"}
+              </button>
+            ))}
+          </div>
+
+          {/* Tab content */}
           <div className="p-6">
-            <CandidatesTable
-              campaignId={campaignId}
-              campaign={data}
-              onImport={() => setImportOpen(true)}
-              chatTarget={chatTarget}
-              onChatSelect={setChatTarget}
-              initialChatId={initialChatId}
-            />
+            {activeTab === "candidates" ? (
+              <CandidatesTable
+                campaignId={campaignId}
+                campaign={data}
+                onImport={() => setImportOpen(true)}
+                chatTarget={chatTarget}
+                onChatSelect={setChatTarget}
+                initialChatId={initialChatId}
+              />
+            ) : (
+              <ResponsesTab campaignId={campaignId} campaign={data} />
+            )}
           </div>
         </div>
       </div>

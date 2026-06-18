@@ -400,6 +400,33 @@ export function pullResponses(
   );
 }
 
+// --- Form responses (stored) ------------------------------------------------
+
+export type StoredFormResponse = {
+  id: string;
+  candidate_id: string;
+  candidate_name: string;
+  candidate_email: string | null;
+  candidate_stage: string;
+  submitted_at: string;
+  responses: Record<string, string>;
+};
+
+export function fetchStoredFormResponses(
+  campaignId: Uuid,
+): Promise<{ items: StoredFormResponse[]; total: number }> {
+  return getJson(`/api/campaigns/${campaignId}/form-responses`);
+}
+
+export function shortlistForStage2(
+  campaignId: Uuid,
+  candidateIds: string[],
+): Promise<{ shortlisted: number }> {
+  return postJson(`/api/campaigns/${campaignId}/shortlist-stage2`, {
+    candidate_ids: candidateIds,
+  });
+}
+
 // --- Stage 2 import ---------------------------------------------------------
 
 export type ImportStage2Result = {

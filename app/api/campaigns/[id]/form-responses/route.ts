@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, min } from "drizzle-orm";
 import { db } from "@/db";
 import { campaigns, candidates, formResponses } from "@/db/schema";
 import { ERR } from "@/lib/api/response";
@@ -29,6 +29,30 @@ export const GET = withAuth<Ctx>(async (_req, ctx) => {
     .where(eq(campaigns.id, campaignId));
   if (!campaign) return ERR.notFound("Campaign");
 
+  // Auto-detect earliest Stage 1 send date for this campaign
+  // — whichever came first: email stage1_sent_at or WA wa_last_sent_at
+  const [sendDateRow] = await db
+    .select({ earliest: min(candidates.stage1SentAt) })
+    .from(candidates)
+    .where(eq(candidates.campaignId, campaignId));
+
+  const [waSendDateRow] = await db
+    .select({ earliest: min(candidates.waLastSentAt) })
+    .from(candidates)
+    .where(eq(candidates.campaignId, campaignId));
+
+  const emailDate = sendDateRow?.earliest ?? null;
+  const waDate = waSendDateRow?.earliest ?? null;
+
+  let autoFromDate: string | null = null;
+  if (emailDate && waDate) {
+    autoFromDate = (emailDate < waDate ? emailDate : waDate).toISOString().slice(0, 10);
+  } else if (emailDate) {
+    autoFromDate = emailDate.toISOString().slice(0, 10);
+  } else if (waDate) {
+    autoFromDate = waDate.toISOString().slice(0, 10);
+  }
+
   const rows = await db
     .select({
       id: formResponses.id,
@@ -54,5 +78,5 @@ export const GET = withAuth<Ctx>(async (_req, ctx) => {
     responses: r.responses as Record<string, string>,
   }));
 
-  return NextResponse.json({ items, total: items.length });
+  return NextResponse.json({ items, total: items.length, auto_from_date: autoFromDate });
 });

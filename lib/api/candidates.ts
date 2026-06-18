@@ -414,7 +414,7 @@ export type StoredFormResponse = {
 
 export function fetchStoredFormResponses(
   campaignId: Uuid,
-): Promise<{ items: StoredFormResponse[]; total: number }> {
+): Promise<{ items: StoredFormResponse[]; total: number; auto_from_date: string | null }> {
   return getJson(`/api/campaigns/${campaignId}/form-responses`);
 }
 

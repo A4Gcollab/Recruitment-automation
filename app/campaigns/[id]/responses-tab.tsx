@@ -167,7 +167,22 @@ export function ResponsesTab({
     queryFn: () => fetchStoredFormResponses(campaignId),
   });
 
-  const items = useMemo(() => data?.items ?? [], [data]);
+  const allItems = useMemo(() => data?.items ?? [], [data]);
+  const autoFromDate = data?.auto_from_date ?? null;
+
+  // Date filter — initialised from auto-detected send date, HR can override
+  const [fromDate, setFromDate] = useState<string>("");
+
+  // Once we get the auto date back, pre-fill the input (only on first load)
+  useMemo(() => {
+    if (autoFromDate && !fromDate) setFromDate(autoFromDate);
+  }, [autoFromDate]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Apply date filter client-side
+  const items = useMemo(() => {
+    if (!fromDate) return allItems;
+    return allItems.filter((i) => i.submitted_at >= fromDate);
+  }, [allItems, fromDate]);
 
   const allSelected = items.length > 0 && items.every((i) => selected.has(i.candidate_id));
   const hasSelection = selected.size > 0;
@@ -238,9 +253,30 @@ export function ResponsesTab({
   return (
     <div>
       {/* Toolbar */}
-      <div className="mb-4 flex items-center gap-3 rounded-xl border border-slate-200/80 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200/80 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        {/* Date filter */}
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-slate-500 whitespace-nowrap">
+            Show responses from:
+          </label>
+          <input
+            type="date"
+            value={fromDate}
+            onChange={(e) => { setFromDate(e.target.value); setSelected(new Set()); }}
+            className="h-7 rounded-md border border-slate-200 bg-slate-50 px-2 text-xs text-slate-700 focus:border-blue-400 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+          />
+          {autoFromDate && fromDate !== autoFromDate && (
+            <button
+              onClick={() => { setFromDate(autoFromDate); setSelected(new Set()); }}
+              className="text-[11px] text-blue-500 hover:text-blue-700"
+            >
+              Reset to auto ({autoFromDate})
+            </button>
+          )}
+        </div>
+
         <span className="text-xs text-slate-400">
-          {items.length} response{items.length === 1 ? "" : "s"}
+          {items.length} of {allItems.length} response{allItems.length === 1 ? "" : "s"}
           {hasSelection ? ` · ${selected.size} selected` : ""}
         </span>
         {hasSelection && (

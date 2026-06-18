@@ -40,9 +40,11 @@ import {
 } from "@/lib/api/candidates";
 import { campaignQueryKey } from "./campaign-detail-view";
 import { ImportFilteredDialog } from "./import-filtered-dialog";
+import { ImportStage2Dialog } from "./import-stage2-dialog";
 import { PullResponsesDialog } from "./pull-responses-dialog";
 import { SendBulkDialog } from "./send-bulk-dialog";
 import { SendStage1Dialog } from "./send-stage1-dialog";
+import { SendStage2Dialog } from "./send-stage2-dialog";
 import { SendWhatsAppDialog } from "./send-whatsapp-dialog";
 
 export function candidatesQueryKey(campaignId: string) {
@@ -116,6 +118,8 @@ export function CandidatesTable({
   const [waBulkSendOpen, setWaBulkSendOpen] = useState(false);
   const [importFilteredOpen, setImportFilteredOpen] = useState(false);
   const [pullResponsesOpen, setPullResponsesOpen] = useState(false);
+  const [importStage2Open, setImportStage2Open] = useState(false);
+  const [sendStage2Open, setSendStage2Open] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
@@ -246,6 +250,11 @@ export function CandidatesTable({
               onClick={() => setImportFilteredOpen(true)}
             />
             <ToolbarButton
+              icon={<Inbox className="size-3" />}
+              label="Import Stage 2 shortlist"
+              onClick={() => setImportStage2Open(true)}
+            />
+            <ToolbarButton
               icon={<FileDown className="size-3" />}
               label="Pull form responses"
               onClick={() => setPullResponsesOpen(true)}
@@ -278,22 +287,35 @@ export function CandidatesTable({
 
         {/* Primary CTAs row */}
         <div className="flex flex-wrap items-center gap-2 px-3 py-2.5">
-          <button
-            onClick={() => setWaBulkSendOpen(true)}
-            disabled={!hasSelection}
-            className="flex h-8 items-center gap-1.5 rounded-lg bg-emerald-500 px-3 text-xs font-medium text-white shadow-sm transition-all hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <MessageCircle className="size-3.5" />
-            Send WhatsApp{hasSelection ? ` (${selectedCount})` : ""}
-          </button>
-          <button
-            onClick={() => setBulkSendOpen(true)}
-            disabled={!hasSelection}
-            className="flex h-8 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-xs font-medium text-white shadow-sm transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <Send className="size-3.5" />
-            Send Email{hasSelection ? ` (${selectedCount})` : ""}
-          </button>
+          {activeFilter === "stage2" ? (
+            <button
+              onClick={() => setSendStage2Open(true)}
+              disabled={!hasSelection}
+              className="flex h-8 items-center gap-1.5 rounded-lg bg-violet-600 px-3 text-xs font-medium text-white shadow-sm transition-all hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Send className="size-3.5" />
+              Send Stage 2{hasSelection ? ` (${selectedCount})` : ""}
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={() => setWaBulkSendOpen(true)}
+                disabled={!hasSelection}
+                className="flex h-8 items-center gap-1.5 rounded-lg bg-emerald-500 px-3 text-xs font-medium text-white shadow-sm transition-all hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <MessageCircle className="size-3.5" />
+                Send WhatsApp{hasSelection ? ` (${selectedCount})` : ""}
+              </button>
+              <button
+                onClick={() => setBulkSendOpen(true)}
+                disabled={!hasSelection}
+                className="flex h-8 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-xs font-medium text-white shadow-sm transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <Send className="size-3.5" />
+                Send Email{hasSelection ? ` (${selectedCount})` : ""}
+              </button>
+            </>
+          )}
 
           {/* Filter chips */}
           <div className="ml-auto flex flex-wrap items-center gap-1.5">
@@ -519,6 +541,20 @@ export function CandidatesTable({
         campaign={campaign}
         open={pullResponsesOpen}
         onOpenChange={setPullResponsesOpen}
+      />
+
+      <ImportStage2Dialog
+        campaignId={campaignId}
+        open={importStage2Open}
+        onOpenChange={setImportStage2Open}
+      />
+
+      <SendStage2Dialog
+        campaignId={campaignId}
+        campaign={campaign}
+        candidates={selectedCandidates}
+        open={sendStage2Open}
+        onOpenChange={setSendStage2Open}
       />
     </>
   );

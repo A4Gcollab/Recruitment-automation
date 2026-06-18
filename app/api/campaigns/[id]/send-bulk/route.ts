@@ -107,14 +107,8 @@ export const POST = withAuth<Ctx>(async (req: NextRequest, ctx, session) => {
       // in this campaign is already an approved good-fit. We trust the import
       // pipeline and only gate on email presence (already checked above).
     } else {
-      if (c.interviewVerdict !== "call_interview") {
-        skipped.push({
-          candidate_id: cid,
-          reason: "verdict_not_call_interview",
-        });
-        continue;
-      }
-      if (c.stage !== "evaluated_screen2") {
+      // Allow stage2 candidates (manually shortlisted) OR evaluated_screen2 candidates
+      if (c.stage !== "stage2" && c.stage !== "evaluated_screen2") {
         skipped.push({ candidate_id: cid, reason: "wrong_stage" });
         continue;
       }

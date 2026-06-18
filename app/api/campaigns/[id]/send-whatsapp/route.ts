@@ -107,11 +107,29 @@ export const POST = withAuth<Ctx>(async (req: NextRequest, ctx, session) => {
     }
 
     const firstName = c.fullName.trim().split(/\s+/)[0] ?? c.fullName;
+
+    // Build template params based on which template is being sent
+    let templateParams: string[];
+    if (template_name === "a4g_interview_invite_v1") {
+      templateParams = [
+        firstName,
+        campaign.roleName,
+        campaign.interviewDate ?? "",
+        campaign.interviewTime ?? "",
+        campaign.interviewMode ?? "Zoom",
+        campaign.zoomLink ?? "",
+        campaign.zoomMeetingId ?? "",
+        campaign.zoomPasscode ?? "",
+      ];
+    } else {
+      templateParams = [firstName, campaign.roleName, formLink, campaign.jobPostUrl ?? ""];
+    }
+
     toInsert.push({
       candidateId: cid,
       campaignId,
       templateName: template_name,
-      templateParams: [firstName, campaign.roleName, formLink, campaign.jobPostUrl ?? ""],
+      templateParams,
       scheduledFor: new Date(),
       idempotencyKey: idemKey,
     });

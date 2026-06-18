@@ -400,6 +400,26 @@ export function pullResponses(
   );
 }
 
+// --- Stage 2 import ---------------------------------------------------------
+
+export type ImportStage2Result = {
+  matched: number;
+  updated: number;
+  unmatched: Array<{ name: string; email: string; reason: string }>;
+};
+
+export function importStage2(
+  campaignId: Uuid,
+  file: File,
+): Promise<ImportStage2Result> {
+  const form = new FormData();
+  form.append("file", file);
+  return postMultipart<ImportStage2Result>(
+    `/api/campaigns/${campaignId}/import-stage2`,
+    form,
+  );
+}
+
 // --- WhatsApp ---------------------------------------------------------------
 
 export type WhatsAppBulkSendPayload = {

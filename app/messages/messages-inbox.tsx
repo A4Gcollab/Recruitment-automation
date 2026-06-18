@@ -117,10 +117,10 @@ function MessageRow({ item }: { item: MessageInboxItem }) {
         )}
       </div>
 
-      {/* Open chat link */}
+      {/* Open chat link — passes candidate id so the campaign page auto-opens their chat */}
       <Link
-        href={`/campaigns/${item.campaign_id}`}
-        title="Open campaign to view full chat"
+        href={`/campaigns/${item.campaign_id}?chat=${item.id}`}
+        title="Open chat"
         className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-600 transition-colors hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-400 dark:hover:bg-emerald-900"
       >
         <MessageCircle className="size-3.5" />

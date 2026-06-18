@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ChevronRight,
@@ -41,6 +41,8 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
   const [editCampaignOpen, setEditCampaignOpen] = useState(false);
   const [chatTarget, setChatTarget] = useState<Candidate | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialChatId = searchParams.get("chat");
   const queryClient = useQueryClient();
 
   const { data, isLoading, isError, error, refetch } = useQuery({
@@ -181,6 +183,7 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
               onImport={() => setImportOpen(true)}
               chatTarget={chatTarget}
               onChatSelect={setChatTarget}
+              initialChatId={initialChatId}
             />
           </div>
         </div>

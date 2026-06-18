@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Download,
@@ -103,12 +103,14 @@ export function CandidatesTable({
   onImport,
   chatTarget,
   onChatSelect,
+  initialChatId,
 }: {
   campaignId: string;
   campaign: CampaignDetail | undefined;
   onImport: () => void;
   chatTarget: Candidate | null;
   onChatSelect: (candidate: Candidate) => void;
+  initialChatId?: string | null;
 }) {
   const queryClient = useQueryClient();
   const [sendTarget, setSendTarget] = useState<Candidate | null>(null);
@@ -132,6 +134,13 @@ export function CandidatesTable({
     () => data?.items ?? [],
     [data]
   );
+
+  // Auto-open chat if ?chat=<candidateId> is in the URL
+  useEffect(() => {
+    if (!initialChatId || chatTarget || allCandidates.length === 0) return;
+    const target = allCandidates.find((c) => c.id === initialChatId);
+    if (target) onChatSelect(target);
+  }, [initialChatId, allCandidates, chatTarget, onChatSelect]);
 
   const candidates = useMemo(
     () => allCandidates.filter((c) => matchesFilter(c, activeFilter)),

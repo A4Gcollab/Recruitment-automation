@@ -28,6 +28,7 @@ import {
 } from "@/lib/api/candidates";
 import { CandidatesTable } from "./candidates-table";
 import { EditCampaignDialog } from "./edit-campaign-dialog";
+import { FunnelBar } from "./funnel-bar";
 import { ImportDialog } from "./import-dialog";
 import { ResponsesTab } from "./responses-tab";
 import { WhatsAppWorkspace } from "./whatsapp-workspace";
@@ -273,6 +274,8 @@ function CampaignHeader({
             : ""}
         </span>
       </div>
+      <FunnelBar countsByStage={campaign.counts_by_stage} />
+
       <div className="mt-1.5">
         {editingJobUrl ? (
           <div className="flex items-center gap-2">

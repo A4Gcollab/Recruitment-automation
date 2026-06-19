@@ -39,6 +39,8 @@ import {
   type EvaluationImportResult,
 } from "@/lib/api/candidates";
 import { campaignQueryKey } from "./campaign-detail-view";
+import { CandidateProfileDrawer } from "./candidate-profile-drawer";
+import { StageMoveDropdown } from "@/components/ui/stage-move-dropdown";
 import { ImportFilteredDialog } from "./import-filtered-dialog";
 import { ImportStage2Dialog } from "./import-stage2-dialog";
 import { PullResponsesDialog } from "./pull-responses-dialog";
@@ -114,6 +116,8 @@ export function CandidatesTable({
 }) {
   const queryClient = useQueryClient();
   const [sendTarget, setSendTarget] = useState<Candidate | null>(null);
+  const [profileTarget, setProfileTarget] = useState<Candidate | null>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [activeFilter, setActiveFilter] = useState<StageFilter>("all");
   const [bulkSendOpen, setBulkSendOpen] = useState(false);
@@ -423,8 +427,13 @@ export function CandidatesTable({
                         }
                       />
                     </TableCell>
-                    <TableCell className="py-3.5 font-medium text-slate-900 dark:text-slate-100">
-                      {candidate.full_name}
+                    <TableCell className="py-3.5">
+                      <button
+                        onClick={() => { setProfileTarget(candidate); setProfileOpen(true); }}
+                        className="font-medium text-slate-900 hover:text-blue-600 hover:underline dark:text-slate-100 dark:hover:text-blue-400 text-left"
+                      >
+                        {candidate.full_name}
+                      </button>
                     </TableCell>
                     <TableCell className="py-3.5 text-xs text-slate-500">
                       {candidate.email ?? (
@@ -451,7 +460,11 @@ export function CandidatesTable({
                       )}
                     </TableCell>
                     <TableCell className="py-3.5">
-                      <StageBadge stage={candidate.stage} />
+                      <StageMoveDropdown
+                        candidateId={candidate.id}
+                        currentStage={candidate.stage}
+                        candidatesQueryKey={candidatesQueryKey(campaignId)}
+                      />
                     </TableCell>
                     <TableCell className="py-3.5">
                       <VerdictChip verdict={candidate.verdict} />
@@ -564,6 +577,13 @@ export function CandidatesTable({
         candidates={selectedCandidates}
         open={sendStage2Open}
         onOpenChange={setSendStage2Open}
+      />
+
+      <CandidateProfileDrawer
+        candidate={profileTarget}
+        campaignId={campaignId}
+        open={profileOpen}
+        onOpenChange={(o) => { setProfileOpen(o); if (!o) setProfileTarget(null); }}
       />
     </>
   );

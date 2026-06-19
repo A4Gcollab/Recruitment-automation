@@ -47,6 +47,9 @@ export type Candidate = CandidateV1 & {
   applicantsync_score: string | null;
   linkedin_data: Record<string, string>;
 
+  // v0.4 — LinkedIn rating
+  linkedin_fit: string | null;
+
   // ChatGPT verdicts
   verdict: Verdict | null;
   reason: string | null;
@@ -277,6 +280,23 @@ export function patchCampaign(
 }
 
 // --- Candidates ---------------------------------------------------------
+
+export type PatchCandidatePayload = {
+  stage?: string;
+  linkedin_fit?: string | null;
+  notes?: string | null;
+};
+
+export function fetchCandidate(id: Uuid): Promise<Candidate> {
+  return getJson<Candidate>(`/api/candidates/${id}`);
+}
+
+export function patchCandidate(
+  id: Uuid,
+  payload: PatchCandidatePayload,
+): Promise<Candidate> {
+  return patchJson<Candidate>(`/api/candidates/${id}`, payload);
+}
 
 export function fetchCandidates(
   filters: CandidatesFilters,

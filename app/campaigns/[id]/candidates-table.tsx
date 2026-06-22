@@ -131,7 +131,7 @@ export function CandidatesTable({
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: candidatesQueryKey(campaignId),
     queryFn: () =>
-      fetchCandidates({ campaign_id: campaignId, page: 1, page_size: 200 }),
+      fetchCandidates({ campaign_id: campaignId, page: 1, page_size: 1000 }),
   });
 
   const allCandidates = useMemo<Candidate[]>(

@@ -89,7 +89,7 @@ function matchesFilter(c: Candidate, filter: StageFilter): boolean {
     case "replied":
       return c.wa_status === "replied";
     case "stage2":
-      return c.stage === "stage2_sent";
+      return c.stage === "stage2" || c.stage === "stage2_sent";
     case "interview":
       return c.stage === "interview_link_sent";
     case "no_contact":

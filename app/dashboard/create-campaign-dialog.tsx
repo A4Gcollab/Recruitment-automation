@@ -34,6 +34,7 @@ const DEFAULT_STAGE1_BODY = `Hey {{name}},
 Thank you for your interest in the {{role_name}} role at Omysha Foundation- VONG & A4G.
 As the next step in our selection process, shortlisted candidates are requested to complete the Stage-1 Screening Google Form within 24 hours of receiving this message:
 Google Form Link: {{form_link}}
+Job Post: {{job_post_url}}
 Your responses will help us understand alignment with the role. Based on the evaluation, selected candidates will be invited for an online interaction, and further details will be shared after assessment.
 Please note that only candidates who submit the form within the given timeline will be considered for the interview stage.
 
@@ -53,6 +54,7 @@ type FormState = CreateCampaignPayload & {
   stage1_body: string;
   reminder_after_days: number;
   form_response_sheet_url: string;
+  job_post_url: string;
 };
 
 const emptyForm: FormState = {
@@ -64,6 +66,7 @@ const emptyForm: FormState = {
   interview_date: "",
   interview_time: "",
   interview_mode: "Zoom",
+  job_post_url: "",
   stage1_subject: DEFAULT_STAGE1_SUBJECT,
   stage1_body: DEFAULT_STAGE1_BODY,
   reminder_after_days: DEFAULT_REMINDER_DAYS,
@@ -125,6 +128,7 @@ export function CreateCampaignDialog({
       "interview_date",
       "interview_time",
       "interview_mode",
+      "job_post_url",
       "stage1_subject",
       "stage1_body",
       "form_response_sheet_url",
@@ -178,15 +182,26 @@ export function CreateCampaignDialog({
             required
             disabled={pending}
           />
-          <Field
-            id="google_form_url"
-            label="Google Form URL"
-            type="url"
-            value={form.google_form_url}
-            onChange={(v) => setForm({ ...form, google_form_url: v })}
-            placeholder="https://forms.gle/…"
-            disabled={pending}
-          />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field
+              id="google_form_url"
+              label="Google Form URL"
+              type="url"
+              value={form.google_form_url}
+              onChange={(v) => setForm({ ...form, google_form_url: v })}
+              placeholder="https://forms.gle/…"
+              disabled={pending}
+            />
+            <Field
+              id="job_post_url"
+              label="Job post URL"
+              type="url"
+              value={form.job_post_url}
+              onChange={(v) => setForm({ ...form, job_post_url: v })}
+              placeholder="https://linkedin.com/jobs/…"
+              disabled={pending}
+            />
+          </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field
@@ -286,7 +301,8 @@ export function CreateCampaignDialog({
                     Merge fields: <code>{`{{name}}`}</code>,{" "}
                     <code>{`{{form_link}}`}</code>,{" "}
                     <code>{`{{deadline}}`}</code>,{" "}
-                    <code>{`{{role_name}}`}</code>.
+                    <code>{`{{role_name}}`}</code>,{" "}
+                    <code>{`{{job_post_url}}`}</code>.
                   </p>
                 </div>
 
@@ -339,7 +355,11 @@ export function CreateCampaignDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={!canSubmit}>
+            <Button
+              type="submit"
+              disabled={!canSubmit}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
               {pending ? <Loader2 className="animate-spin" /> : null}
               {pending ? "Creating…" : "Create campaign"}
             </Button>

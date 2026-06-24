@@ -15,7 +15,7 @@ const querySchema = z.object({
   campaign_id: z.string().uuid(),
   stage: z.string().min(1).max(100).optional(),
   page: z.coerce.number().int().min(1).default(1),
-  page_size: z.coerce.number().int().min(1).max(200).default(50),
+  page_size: z.coerce.number().int().min(1).max(1000).default(50),
 });
 
 export const GET = withAuth(async (req) => {

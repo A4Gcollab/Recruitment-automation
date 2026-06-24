@@ -1,5 +1,5 @@
 import { AuthGuard } from "@/components/auth-guard";
-import { AppHeader } from "@/components/app-header";
+import { AtsSidebar } from "@/components/ats-sidebar";
 
 export default function CampaignsLayout({
   children,
@@ -8,9 +8,9 @@ export default function CampaignsLayout({
 }) {
   return (
     <AuthGuard>
-      <div className="flex min-h-svh flex-col">
-        <AppHeader />
-        {children}
+      <div className="flex h-screen overflow-hidden bg-[#F8FAFC] dark:bg-slate-950">
+        <AtsSidebar />
+        <div className="flex flex-1 flex-col overflow-hidden">{children}</div>
       </div>
     </AuthGuard>
   );

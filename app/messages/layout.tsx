@@ -1,7 +1,7 @@
 import { AuthGuard } from "@/components/auth-guard";
 import { AtsSidebar } from "@/components/ats-sidebar";
 
-export default function DashboardLayout({
+export default function MessagesLayout({
   children,
 }: {
   children: React.ReactNode;

@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { Loader2, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -60,15 +60,17 @@ export function ImportDialog({
 }) {
   const queryClient = useQueryClient();
   const [step, setStep] = useState<Step>(1);
-  const [sheetUrl, setSheetUrl] = useState("");
+  const [file, setFile] = useState<File | null>(null);
   const [mapping, setMapping] = useState<MappingState>(initialMapping);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!open) {
       const t = setTimeout(() => {
         setStep(1);
-        setSheetUrl("");
+        setFile(null);
         setMapping(initialMapping);
+        if (fileInputRef.current) fileInputRef.current.value = "";
       }, 200);
       return () => clearTimeout(t);
     }
@@ -96,9 +98,7 @@ export function ImportDialog({
     },
   });
 
-  const step1Valid =
-    sheetUrl.trim().startsWith("http") &&
-    sheetUrl.includes("docs.google.com");
+  const step1Valid = file !== null;
   const step2Valid = mapping.full_name.trim().length > 0;
 
   function handlePrimary() {
@@ -128,7 +128,7 @@ export function ImportDialog({
         if (val) (cleanedMapping as Record<string, string>)[key] = val;
       }
       mutation.mutate({
-        google_sheet_url: sheetUrl.trim(),
+        file: file!,
         column_mapping: cleanedMapping,
       });
     }
@@ -164,7 +164,7 @@ export function ImportDialog({
     >
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Import candidates from Google Sheets</DialogTitle>
+          <DialogTitle>Import candidates from Excel</DialogTitle>
           <DialogDescription>
             Step {step} of 3 — {stepDescription(step)}
           </DialogDescription>
@@ -173,18 +173,49 @@ export function ImportDialog({
         {step === 1 ? (
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="sheet-url">Google Sheet URL</Label>
-              <Input
-                id="sheet-url"
-                type="url"
-                placeholder="https://docs.google.com/spreadsheets/d/…"
-                value={sheetUrl}
-                onChange={(e) => setSheetUrl(e.target.value)}
-                autoFocus
-              />
+              <Label htmlFor="excel-file">Excel file (.xlsx)</Label>
+              <label
+                htmlFor="excel-file"
+                className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed px-6 py-8 transition-colors ${
+                  file
+                    ? "border-blue-400 bg-blue-50/60 dark:border-blue-600 dark:bg-blue-950/30"
+                    : "border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800/50"
+                }`}
+              >
+                <Upload
+                  className={`size-8 ${file ? "text-blue-500" : "text-slate-300"}`}
+                />
+                {file ? (
+                  <div className="text-center">
+                    <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                      {file.name}
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      {(file.size / 1024).toFixed(1)} KB · click to change
+                    </p>
+                  </div>
+                ) : (
+                  <div className="text-center">
+                    <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                      Click to upload or drag & drop
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      Supports .xlsx and .xls files
+                    </p>
+                  </div>
+                )}
+                <input
+                  ref={fileInputRef}
+                  id="excel-file"
+                  type="file"
+                  accept=".xlsx,.xls"
+                  className="sr-only"
+                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                />
+              </label>
               <p className="text-xs text-muted-foreground">
-                Share the sheet with the service account email (see
-                docs/DEPLOYMENT.md). ApplicantSync exports land here.
+                First row must be the header row. Column names are used in the
+                next step to map fields.
               </p>
             </div>
           </div>
@@ -193,8 +224,8 @@ export function ImportDialog({
         {step === 2 ? (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Type the exact header text from row 1 of your sheet for each
-              field. Backend matches by header name. Only{" "}
+              Type the exact header text from row 1 of your file for each
+              field. Only{" "}
               <span className="font-medium text-foreground">Full name</span> is
               required.
             </p>
@@ -257,7 +288,7 @@ export function ImportDialog({
 
         {step === 3 ? (
           <div className="space-y-3 text-sm">
-            <SummaryRow label="Sheet URL" value={sheetUrl} mono />
+            <SummaryRow label="File" value={file?.name ?? ""} />
             <div className="rounded-md border bg-muted/40 p-3">
               <p className="mb-2 font-medium">Column mapping</p>
               <ul className="space-y-1 text-muted-foreground">
@@ -281,8 +312,8 @@ export function ImportDialog({
               </ul>
             </div>
             <p className="text-xs text-muted-foreground">
-              Submitting will fetch the sheet and create candidate records in
-              this campaign. Rows missing a full name are reported as errors.
+              Submitting will parse the Excel file and create candidate records
+              in this campaign. Rows missing a full name are skipped.
             </p>
           </div>
         ) : null}
@@ -300,6 +331,7 @@ export function ImportDialog({
             type="button"
             onClick={handlePrimary}
             disabled={primaryDisabled}
+            className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
           >
             {mutation.isPending ? <Loader2 className="animate-spin" /> : null}
             {primaryLabel}
@@ -336,24 +368,16 @@ function MappingField({
 function SummaryRow({
   label,
   value,
-  mono,
 }: {
   label: string;
   value: string;
-  mono?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-0.5">
       <span className="text-xs uppercase tracking-wide text-muted-foreground">
         {label}
       </span>
-      <span
-        className={
-          mono
-            ? "break-all font-mono text-xs text-foreground"
-            : "text-foreground"
-        }
-      >
+      <span className="break-all font-mono text-xs text-foreground">
         {value || <span className="italic text-muted-foreground">—</span>}
       </span>
     </div>
@@ -381,9 +405,9 @@ function MappingSummaryLine({
 function stepDescription(step: Step): string {
   switch (step) {
     case 1:
-      return "paste the sheet URL";
+      return "upload your Excel file";
     case 2:
-      return "map sheet columns to candidate fields";
+      return "map columns to candidate fields";
     case 3:
       return "review and confirm";
   }

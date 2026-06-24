@@ -47,6 +47,9 @@ export type Candidate = CandidateV1 & {
   applicantsync_score: string | null;
   linkedin_data: Record<string, string>;
 
+  // v0.4 — LinkedIn rating
+  linkedin_fit: string | null;
+
   // ChatGPT verdicts
   verdict: Verdict | null;
   reason: string | null;
@@ -194,6 +197,16 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
   return parseOrThrow<T>(res);
 }
 
+async function patchJson<T>(url: string, body: unknown): Promise<T> {
+  const res = await fetch(url, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return parseOrThrow<T>(res);
+}
+
 async function postMultipart<T>(url: string, form: FormData): Promise<T> {
   // No Content-Type header — browser sets multipart boundary automatically.
   const res = await fetch(url, {
@@ -221,6 +234,7 @@ export type CreateCampaignPayload = {
   interview_date?: string;
   interview_time?: string;
   interview_mode?: string;
+  job_post_url?: string;
 
   // v0.2 additions — all optional; server falls back to seeded defaults.
   stage1_subject?: string;
@@ -231,6 +245,17 @@ export type CreateCampaignPayload = {
   interview_body?: string;
   reminder_after_days?: number;
   form_response_sheet_url?: string;
+};
+
+export type PatchCampaignPayload = {
+  job_post_url?: string | null;
+  google_form_url?: string | null;
+  zoom_link?: string | null;
+  zoom_meeting_id?: string | null;
+  zoom_passcode?: string | null;
+  interview_date?: string | null;
+  interview_time?: string | null;
+  interview_mode?: string | null;
 };
 
 export function fetchCampaigns(): Promise<CampaignListResponse> {
@@ -247,7 +272,31 @@ export function createCampaign(
   return postJson<Campaign>("/api/campaigns", payload);
 }
 
+export function patchCampaign(
+  id: Uuid,
+  payload: PatchCampaignPayload,
+): Promise<Campaign> {
+  return patchJson<Campaign>(`/api/campaigns/${id}`, payload);
+}
+
 // --- Candidates ---------------------------------------------------------
+
+export type PatchCandidatePayload = {
+  stage?: string;
+  linkedin_fit?: string | null;
+  notes?: string | null;
+};
+
+export function fetchCandidate(id: Uuid): Promise<Candidate> {
+  return getJson<Candidate>(`/api/candidates/${id}`);
+}
+
+export function patchCandidate(
+  id: Uuid,
+  payload: PatchCandidatePayload,
+): Promise<Candidate> {
+  return patchJson<Candidate>(`/api/candidates/${id}`, payload);
+}
 
 export function fetchCandidates(
   filters: CandidatesFilters,
@@ -257,10 +306,10 @@ export function fetchCandidates(
   );
 }
 
-// --- Import (applicants from Sheet) -------------------------------------
+// --- Import (applicants from Excel) -------------------------------------
 
 export type ImportPayload = {
-  google_sheet_url: string;
+  file: File;
   column_mapping: ColumnMapping;
 };
 
@@ -268,10 +317,17 @@ export function importCandidates(
   campaignId: Uuid,
   payload: ImportPayload,
 ): Promise<ImportResult> {
-  return postJson<ImportResult>(
-    `/api/campaigns/${campaignId}/import`,
-    payload,
-  );
+  const formData = new FormData();
+  formData.append("file", payload.file);
+  formData.append("column_mapping", JSON.stringify(payload.column_mapping));
+  return fetch(`/api/campaigns/${campaignId}/import`, {
+    method: "POST",
+    body: formData,
+  }).then(async (r) => {
+    const body = await r.json().catch(() => ({}));
+    if (!r.ok) throw new ApiClientError(r.status, body?.error ?? "Import failed");
+    return body as ImportResult;
+  });
 }
 
 // --- Emails -------------------------------------------------------------
@@ -361,6 +417,53 @@ export function pullResponses(
   return postJson<PullResponsesResult>(
     `/api/campaigns/${campaignId}/pull-responses`,
     payload,
+  );
+}
+
+// --- Form responses (stored) ------------------------------------------------
+
+export type StoredFormResponse = {
+  id: string;
+  candidate_id: string;
+  candidate_name: string;
+  candidate_email: string | null;
+  candidate_stage: string;
+  submitted_at: string;
+  responses: Record<string, string>;
+};
+
+export function fetchStoredFormResponses(
+  campaignId: Uuid,
+): Promise<{ items: StoredFormResponse[]; total: number; auto_from_date: string | null }> {
+  return getJson(`/api/campaigns/${campaignId}/form-responses`);
+}
+
+export function shortlistForStage2(
+  campaignId: Uuid,
+  candidateIds: string[],
+): Promise<{ shortlisted: number }> {
+  return postJson(`/api/campaigns/${campaignId}/shortlist-stage2`, {
+    candidate_ids: candidateIds,
+  });
+}
+
+// --- Stage 2 import ---------------------------------------------------------
+
+export type ImportStage2Result = {
+  matched: number;
+  updated: number;
+  unmatched: Array<{ name: string; email: string; reason: string }>;
+};
+
+export function importStage2(
+  campaignId: Uuid,
+  file: File,
+): Promise<ImportStage2Result> {
+  const form = new FormData();
+  form.append("file", file);
+  return postMultipart<ImportStage2Result>(
+    `/api/campaigns/${campaignId}/import-stage2`,
+    form,
   );
 }
 

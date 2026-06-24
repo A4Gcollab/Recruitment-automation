@@ -65,6 +65,9 @@ export type Candidate = {
   stage1_sent_at: IsoDateTime | null;
   reminder_sent_at: IsoDateTime | null;
 
+  // v0.4 — LinkedIn rating
+  linkedin_fit: string | null;
+
   // v0.3 — WhatsApp
   wa_status: string | null;
   wa_last_sent_at: IsoDateTime | null;

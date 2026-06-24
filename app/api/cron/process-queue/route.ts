@@ -105,6 +105,7 @@ export async function GET(req: NextRequest) {
       orgName: ORG_NAME,
       formLink,
       deadline: defaultDeadline(),
+      jobPostUrl: campaign.jobPostUrl,
       // v2.2: per-campaign templates (set via the create-campaign dialog).
       subjectTemplate: campaign.stage1Subject,
       bodyTemplate: campaign.stage1Body,

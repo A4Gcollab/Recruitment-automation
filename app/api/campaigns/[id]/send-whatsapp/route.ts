@@ -56,15 +56,24 @@ export const POST = withAuth<Ctx>(async (req: NextRequest, ctx, session) => {
     );
   const byId = new Map(fetched.map((c) => [c.id, c] as const));
 
+  // Key is per-day so the same candidate can be re-contacted on a new day
+  // (reminder / re-engagement). Within the same day it stays idempotent.
+  const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
   const idemKeyFor = (cid: string) =>
-    `wa:${campaignId}:${template_name}:${cid}`;
+    `wa:${campaignId}:${template_name}:${cid}:${today}`;
   const idemKeys = ids.map(idemKeyFor);
+  // Only block if there's an active (pending/processing) item — not already-sent ones
   const existingRows = idemKeys.length === 0
     ? []
     : await db
         .select({ idempotencyKey: whatsappQueue.idempotencyKey })
         .from(whatsappQueue)
-        .where(inArray(whatsappQueue.idempotencyKey, idemKeys));
+        .where(
+          and(
+            inArray(whatsappQueue.idempotencyKey, idemKeys),
+            inArray(whatsappQueue.status, ["pending", "processing"]),
+          ),
+        );
   const existingKeys = new Set(existingRows.map((r) => r.idempotencyKey));
 
   type SkipReason = "candidate_not_found" | "no_phone" | "already_sent";
@@ -98,11 +107,29 @@ export const POST = withAuth<Ctx>(async (req: NextRequest, ctx, session) => {
     }
 
     const firstName = c.fullName.trim().split(/\s+/)[0] ?? c.fullName;
+
+    // Build template params based on which template is being sent
+    let templateParams: string[];
+    if (template_name === "a4g_interview_invite_v1") {
+      templateParams = [
+        firstName,
+        campaign.roleName,
+        campaign.interviewDate ?? "",
+        campaign.interviewTime ?? "",
+        campaign.interviewMode ?? "Zoom",
+        campaign.zoomLink ?? "",
+        campaign.zoomMeetingId ?? "",
+        campaign.zoomPasscode ?? "",
+      ];
+    } else {
+      templateParams = [firstName, campaign.roleName, formLink, campaign.jobPostUrl ?? ""];
+    }
+
     toInsert.push({
       candidateId: cid,
       campaignId,
       templateName: template_name,
-      templateParams: [firstName, campaign.roleName, formLink, campaign.jobPostUrl ?? ""],
+      templateParams,
       scheduledFor: new Date(),
       idempotencyKey: idemKey,
     });

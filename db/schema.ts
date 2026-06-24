@@ -96,6 +96,8 @@ export const candidates = pgTable(
     // v0.2 — reminder timing
     stage1SentAt: timestamp("stage1_sent_at", { withTimezone: true }),
     reminderSentAt: timestamp("reminder_sent_at", { withTimezone: true }),
+    // v0.4 — LinkedIn Good Fit / Disqualified rating (from LinkedIn page or Tampermonkey sync)
+    linkedinFit: varchar("linkedin_fit", { length: 50 }),
     // v0.3 — WhatsApp status tracking
     waStatus: varchar("wa_status", { length: 50 }),
     waLastSentAt: timestamp("wa_last_sent_at", { withTimezone: true }),

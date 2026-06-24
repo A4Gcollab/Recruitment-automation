@@ -37,6 +37,9 @@ export function serializeCandidate(row: CandidateRow): Candidate {
     stage1_sent_at: row.stage1SentAt ? row.stage1SentAt.toISOString() : null,
     reminder_sent_at: row.reminderSentAt ? row.reminderSentAt.toISOString() : null,
 
+    // v0.4 LinkedIn rating
+    linkedin_fit: row.linkedinFit ?? null,
+
     // v0.3 WhatsApp fields
     wa_status: row.waStatus ?? null,
     wa_last_sent_at: row.waLastSentAt ? row.waLastSentAt.toISOString() : null,

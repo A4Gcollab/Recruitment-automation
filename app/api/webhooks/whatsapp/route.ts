@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { and, eq, isNull, ne, or } from "drizzle-orm";
+import { and, eq, isNull, ne, notInArray, or } from "drizzle-orm";
 import { db } from "@/db";
 import { candidates, whatsappMessages } from "@/db/schema";
 import { logAudit } from "@/lib/audit";
@@ -79,15 +79,16 @@ async function handleStatusUpdate(status: StatusUpdate) {
     .limit(1);
 
   if (msg) {
-    // Never overwrite "replied" with a delivery status — "replied" takes
-    // priority over all delivery statuses (sent/delivered/read).
+    // Never overwrite a reply status with a delivery status.
+    // Reply statuses take permanent priority over sent/delivered/read.
+    const REPLY_STATUSES = ["replied", "stage1_replied", "stage2_replied"];
     await db
       .update(candidates)
       .set({ waStatus: newStatus, updatedAt: new Date() })
       .where(
         and(
           eq(candidates.id, msg.candidateId),
-          or(isNull(candidates.waStatus), ne(candidates.waStatus, "replied")),
+          or(isNull(candidates.waStatus), notInArray(candidates.waStatus, REPLY_STATUSES)),
         ),
       );
   }
@@ -131,11 +132,18 @@ async function handleInboundMessage(message: InboundMessage, contact?: Contact) 
     status: "received",
   });
 
-  // Update candidate's reply status
+  // Determine which stage the reply belongs to based on candidate's current stage.
+  // Stage 2 stages: candidate was already invited for interview.
+  const STAGE2_STAGES = new Set([
+    "stage2", "stage2_sent", "evaluated_screen2",
+    "interview_link_sent", "confirmed", "interview_confirmed",
+  ]);
+  const waReplyStatus = STAGE2_STAGES.has(candidate.stage) ? "stage2_replied" : "stage1_replied";
+
   await db
     .update(candidates)
     .set({
-      waStatus: "replied",
+      waStatus: waReplyStatus,
       waLastReply: messageBody,
       waLastReplyAt: new Date(),
       updatedAt: new Date(),

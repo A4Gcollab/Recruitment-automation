@@ -1,5 +1,67 @@
 const ORG_NAME = "Omysha Foundation";
 
+export function renderInterviewLink(vars: {
+  candidateFirstName: string;
+  roleName: string;
+  orgName?: string;
+  interviewDate: string;
+  interviewTime: string;
+  interviewMode: string;
+  zoomLink: string;
+  zoomMeetingId: string;
+  zoomPasscode: string;
+  subjectTemplate?: string | null;
+  bodyTemplate?: string | null;
+}): { subject: string; html: string; text: string } {
+  const org = vars.orgName ?? ORG_NAME;
+  const firstName = vars.candidateFirstName;
+
+  const mergeVars: Record<string, string> = {
+    name: firstName,
+    candidate_first_name: firstName,
+    role_name: vars.roleName,
+    org_name: org,
+    organization: org,
+    interview_date: vars.interviewDate,
+    interview_time: vars.interviewTime,
+    interview_mode: vars.interviewMode,
+    zoom_link: vars.zoomLink,
+    zoom_meeting_id: vars.zoomMeetingId,
+    zoom_passcode: vars.zoomPasscode,
+  };
+
+  if (vars.subjectTemplate?.trim() && vars.bodyTemplate?.trim()) {
+    const subject = substituteMergeFields(vars.subjectTemplate, mergeVars);
+    const text = substituteMergeFields(vars.bodyTemplate, mergeVars);
+    const html = plainTextBodyToHtml(text);
+    return { subject, html, text };
+  }
+
+  // Default fallback template
+  const subject = `Interview Invitation — ${vars.roleName} | ${org}`;
+  const text = [
+    `Dear ${firstName},`,
+    "",
+    `Congratulations! We are pleased to invite you for an interview for the ${vars.roleName} role at ${org}.`,
+    "",
+    "Interview Details:",
+    `Date: ${vars.interviewDate}`,
+    `Time: ${vars.interviewTime}`,
+    `Mode: ${vars.interviewMode}`,
+    `Zoom Link: ${vars.zoomLink}`,
+    `Meeting ID: ${vars.zoomMeetingId}`,
+    `Passcode: ${vars.zoomPasscode}`,
+    "",
+    "Please confirm your attendance by replying to this email.",
+    "",
+    "Warm regards,",
+    `HR Team | ${org}`,
+  ].join("\n");
+
+  const html = plainTextBodyToHtml(text);
+  return { subject, html, text };
+}
+
 function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }

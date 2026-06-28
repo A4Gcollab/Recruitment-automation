@@ -3,7 +3,7 @@ import { and, asc, eq, lte } from "drizzle-orm";
 import { db } from "@/db";
 import { candidates, campaigns, emailQueue, roleConfigs } from "@/db/schema";
 import { sendEmail } from "@/lib/email/sender";
-import { renderStage1 } from "@/lib/email/templates";
+import { renderInterviewLink, renderStage1 } from "@/lib/email/templates";
 import { logAudit } from "@/lib/audit";
 
 export const runtime = "nodejs";
@@ -90,7 +90,37 @@ export async function GET(req: NextRequest) {
 
     const formLink = campaign.googleFormUrl ?? roleConfig?.googleFormUrl ?? "";
 
-    if (item.templateType !== "stage1") {
+    let rendered: { subject: string; html: string; text: string };
+    let nextStage: string;
+
+    if (item.templateType === "stage1") {
+      rendered = renderStage1({
+        candidateFirstName: firstName(candidate.fullName),
+        roleName: campaign.roleName,
+        orgName: ORG_NAME,
+        formLink,
+        deadline: defaultDeadline(),
+        jobPostUrl: campaign.jobPostUrl,
+        subjectTemplate: campaign.stage1Subject,
+        bodyTemplate: campaign.stage1Body,
+      });
+      nextStage = "stage1_sent";
+    } else if (item.templateType === "interview_link") {
+      rendered = renderInterviewLink({
+        candidateFirstName: firstName(candidate.fullName),
+        roleName: campaign.roleName,
+        orgName: ORG_NAME,
+        interviewDate: campaign.interviewDate ?? "",
+        interviewTime: campaign.interviewTime ?? "",
+        interviewMode: campaign.interviewMode ?? "Zoom",
+        zoomLink: campaign.zoomLink ?? "",
+        zoomMeetingId: campaign.zoomMeetingId ?? "",
+        zoomPasscode: campaign.zoomPasscode ?? "",
+        subjectTemplate: campaign.interviewSubject,
+        bodyTemplate: campaign.interviewBody,
+      });
+      nextStage = "interview_link_sent";
+    } else {
       await db
         .update(emailQueue)
         .set({ status: "failed", errorMessage: `Unknown template_type '${item.templateType}'` })
@@ -99,17 +129,7 @@ export async function GET(req: NextRequest) {
       continue;
     }
 
-    const { subject, html, text } = renderStage1({
-      candidateFirstName: firstName(candidate.fullName),
-      roleName: campaign.roleName,
-      orgName: ORG_NAME,
-      formLink,
-      deadline: defaultDeadline(),
-      jobPostUrl: campaign.jobPostUrl,
-      // v2.2: per-campaign templates (set via the create-campaign dialog).
-      subjectTemplate: campaign.stage1Subject,
-      bodyTemplate: campaign.stage1Body,
-    });
+    const { subject, html, text } = rendered;
 
     const result = await sendEmail({ to: candidate.email, subject, html, text });
 
@@ -120,7 +140,7 @@ export async function GET(req: NextRequest) {
         .where(eq(emailQueue.id, item.id));
       await db
         .update(candidates)
-        .set({ stage: "stage1_sent", updatedAt: new Date() })
+        .set({ stage: nextStage, updatedAt: new Date() })
         .where(eq(candidates.id, candidate.id));
       await logAudit({
         actor: "system:cron",

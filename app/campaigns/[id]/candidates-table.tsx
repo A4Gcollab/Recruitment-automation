@@ -58,7 +58,8 @@ type StageFilter =
   | "imported"
   | "email_sent"
   | "wa_sent"
-  | "replied"
+  | "stage1_replied"
+  | "stage2_replied"
   | "stage2"
   | "interview"
   | "no_contact";
@@ -68,7 +69,8 @@ const FILTER_LABELS: Record<StageFilter, string> = {
   imported: "Imported",
   email_sent: "Email Sent",
   wa_sent: "WA Sent",
-  replied: "WA Replied",
+  stage1_replied: "S1 Replied",
+  stage2_replied: "S2 Replied",
   stage2: "Stage 2",
   interview: "Interview",
   no_contact: "No Contact",
@@ -86,10 +88,14 @@ function matchesFilter(c: Candidate, filter: StageFilter): boolean {
     case "wa_sent":
       // WhatsApp message was sent (any delivery status, including replied)
       return c.wa_last_sent_at !== null;
-    case "replied":
-      return c.wa_status === "replied";
+    case "stage1_replied":
+      // old "replied" data (pre-fix) defaults to Stage 1
+      return c.wa_status === "stage1_replied" || c.wa_status === "replied";
+    case "stage2_replied":
+      return c.wa_status === "stage2_replied";
     case "stage2":
-      return c.stage === "stage2" || c.stage === "stage2_sent";
+      // Candidates shortlisted for Stage 2 — via Form Responses tab OR manual move
+      return c.stage === "stage2" || c.stage === "stage2_sent" || c.stage === "evaluated_screen2";
     case "interview":
       return c.stage === "interview_link_sent";
     case "no_contact":
@@ -158,7 +164,8 @@ export function CandidatesTable({
       imported: 0,
       email_sent: 0,
       wa_sent: 0,
-      replied: 0,
+      stage1_replied: 0,
+      stage2_replied: 0,
       stage2: 0,
       interview: 0,
       no_contact: 0,
@@ -167,7 +174,8 @@ export function CandidatesTable({
       if (matchesFilter(c, "imported")) counts.imported++;
       if (matchesFilter(c, "email_sent")) counts.email_sent++;
       if (matchesFilter(c, "wa_sent")) counts.wa_sent++;
-      if (matchesFilter(c, "replied")) counts.replied++;
+      if (matchesFilter(c, "stage1_replied")) counts.stage1_replied++;
+      if (matchesFilter(c, "stage2_replied")) counts.stage2_replied++;
       if (matchesFilter(c, "stage2")) counts.stage2++;
       if (matchesFilter(c, "interview")) counts.interview++;
       if (matchesFilter(c, "no_contact")) counts.no_contact++;

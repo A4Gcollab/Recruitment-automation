@@ -111,12 +111,13 @@ export const POST = withAuth<Ctx>(async (req: NextRequest, ctx, session) => {
     // Build template params based on which template is being sent
     let templateParams: string[];
     if (template_name === "a4g_interview_invite_v1") {
+      // Template has 7 body variables: name, role, date, time, zoom_link, meeting_id, passcode.
+      // interviewMode is NOT a template variable (template text always says "Zoom").
       templateParams = [
         firstName,
         campaign.roleName,
         campaign.interviewDate ?? "",
         campaign.interviewTime ?? "",
-        campaign.interviewMode ?? "Zoom",
         campaign.zoomLink ?? "",
         campaign.zoomMeetingId ?? "",
         campaign.zoomPasscode ?? "",

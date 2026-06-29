@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { and, asc, eq, lte } from "drizzle-orm";
+import { and, asc, eq, lt, lte } from "drizzle-orm";
 import { db } from "@/db";
 import { candidates, campaigns, emailQueue, roleConfigs } from "@/db/schema";
 import { sendEmail } from "@/lib/email/sender";
@@ -41,6 +41,13 @@ export async function GET(req: NextRequest) {
 
   const delayMin = parseInt(process.env.SEND_DELAY_MIN_SECONDS ?? "30", 10);
   const delayMax = parseInt(process.env.SEND_DELAY_MAX_SECONDS ?? "60", 10);
+
+  // Recover items stuck in "processing" for more than 10 minutes (crashed mid-run).
+  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+  await db
+    .update(emailQueue)
+    .set({ status: "pending", scheduledFor: new Date() })
+    .where(and(eq(emailQueue.status, "processing"), lt(emailQueue.scheduledFor, tenMinutesAgo)));
 
   const pending = await db
     .select()

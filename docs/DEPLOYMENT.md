@@ -240,10 +240,10 @@ v0.3.1 only `process-queue` is built; add the others as they ship.
 
 ```cron
 # Use the same CRON_SECRET value as in .env.production
-*/5 * * * * curl -fsS -H "Authorization: Bearer YOUR_CRON_SECRET" https://RecSup.omysha.org/api/cron/process-queue           >/dev/null 2>&1
-*/5 * * * * curl -fsS -H "Authorization: Bearer YOUR_CRON_SECRET" https://RecSup.omysha.org/api/cron/process-whatsapp-queue  >/dev/null 2>&1
+*/5 * * * * curl -fsS -H "Authorization: Bearer YOUR_CRON_SECRET" https://RecSup.omysha.org/api/cron/process-queue              >/dev/null 2>&1
+*/5 * * * * curl -fsS -H "Authorization: Bearer YOUR_CRON_SECRET" https://RecSup.omysha.org/api/cron/process-whatsapp-queue     >/dev/null 2>&1
 */5 * * * * curl -fsS -H "Authorization: Bearer YOUR_CRON_SECRET" https://RecSup.omysha.org/api/cron/process-whatsapp-reminders >/dev/null 2>&1
-# future */5 * * * * curl -fsS -H "Authorization: Bearer YOUR_CRON_SECRET" https://RecSup.omysha.org/api/cron/check-reminders >/dev/null 2>&1
+*/5 * * * * curl -fsS -H "Authorization: Bearer YOUR_CRON_SECRET" https://RecSup.omysha.org/api/cron/check-email-reminders      >/dev/null 2>&1
 ```
 
 ---

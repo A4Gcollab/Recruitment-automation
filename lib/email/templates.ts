@@ -62,6 +62,58 @@ export function renderInterviewLink(vars: {
   return { subject, html, text };
 }
 
+export function renderReminder(vars: {
+  candidateFirstName: string;
+  roleName: string;
+  orgName?: string;
+  formLink: string;
+  deadline: string;
+  subjectTemplate?: string | null;
+  bodyTemplate?: string | null;
+}): { subject: string; html: string; text: string } {
+  const org = vars.orgName ?? ORG_NAME;
+  const firstName = vars.candidateFirstName;
+
+  const mergeVars: Record<string, string> = {
+    name: firstName,
+    candidate_first_name: firstName,
+    role_name: vars.roleName,
+    form_link: vars.formLink,
+    deadline: vars.deadline,
+    org_name: org,
+    organization: org,
+  };
+
+  if (vars.subjectTemplate?.trim() && vars.bodyTemplate?.trim()) {
+    const subject = substituteMergeFields(vars.subjectTemplate, mergeVars);
+    const text = substituteMergeFields(vars.bodyTemplate, mergeVars);
+    const html = plainTextBodyToHtml(text);
+    return { subject, html, text };
+  }
+
+  // Default fallback
+  const subject = `Reminder — Stage-1 Screening Form still pending | ${vars.roleName}`;
+  const text = [
+    `Hi ${firstName},`,
+    "",
+    `This is a gentle reminder to complete the Stage-1 Screening Form for the ${vars.roleName} role:`,
+    "",
+    vars.formLink,
+    "",
+    `We have not received your submission yet. Deadline: ${vars.deadline}`,
+    "",
+    "Only candidates who submit by the deadline can move to the interview stage.",
+    "",
+    "If you have already submitted, please ignore this message.",
+    "",
+    "Warm regards,",
+    `HR Team | ${org}`,
+  ].join("\n");
+
+  const html = plainTextBodyToHtml(text);
+  return { subject, html, text };
+}
+
 function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }

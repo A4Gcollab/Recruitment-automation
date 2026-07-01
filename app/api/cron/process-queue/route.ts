@@ -3,7 +3,7 @@ import { and, asc, eq, lt, lte } from "drizzle-orm";
 import { db } from "@/db";
 import { candidates, campaigns, emailQueue, roleConfigs } from "@/db/schema";
 import { sendEmail } from "@/lib/email/sender";
-import { renderInterviewLink, renderStage1 } from "@/lib/email/templates";
+import { renderInterviewLink, renderReminder, renderStage1 } from "@/lib/email/templates";
 import { logAudit } from "@/lib/audit";
 
 export const runtime = "nodejs";
@@ -99,6 +99,7 @@ export async function GET(req: NextRequest) {
 
     let rendered: { subject: string; html: string; text: string };
     let nextStage: string;
+    let extraCandidateFields: Partial<typeof candidates.$inferInsert> = {};
 
     if (item.templateType === "stage1") {
       rendered = renderStage1({
@@ -112,6 +113,19 @@ export async function GET(req: NextRequest) {
         bodyTemplate: campaign.stage1Body,
       });
       nextStage = "stage1_sent";
+      extraCandidateFields = { stage1SentAt: new Date() };
+    } else if (item.templateType === "reminder") {
+      rendered = renderReminder({
+        candidateFirstName: firstName(candidate.fullName),
+        roleName: campaign.roleName,
+        orgName: ORG_NAME,
+        formLink,
+        deadline: defaultDeadline(),
+        subjectTemplate: campaign.reminderSubject,
+        bodyTemplate: campaign.reminderBody,
+      });
+      nextStage = "stage1_sent"; // reminder keeps candidate at same pipeline stage
+      extraCandidateFields = { reminderSentAt: new Date() };
     } else if (item.templateType === "interview_link") {
       rendered = renderInterviewLink({
         candidateFirstName: firstName(candidate.fullName),
@@ -147,7 +161,7 @@ export async function GET(req: NextRequest) {
         .where(eq(emailQueue.id, item.id));
       await db
         .update(candidates)
-        .set({ stage: nextStage, updatedAt: new Date() })
+        .set({ stage: nextStage, updatedAt: new Date(), ...extraCandidateFields })
         .where(eq(candidates.id, candidate.id));
       await logAudit({
         actor: "system:cron",

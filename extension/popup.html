@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>A4G Q&A Sync</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 300px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 13px;
+      color: #1a1a2e;
+      background: #fff;
+      padding: 16px;
+    }
+    h1 {
+      font-size: 14px;
+      font-weight: 700;
+      color: #1f3a5f;
+      margin-bottom: 4px;
+    }
+    .subtitle {
+      font-size: 11px;
+      color: #888;
+      margin-bottom: 14px;
+    }
+    label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: #555;
+      margin-bottom: 4px;
+    }
+    select {
+      width: 100%;
+      padding: 7px 10px;
+      border: 1px solid #d0d5dd;
+      border-radius: 8px;
+      font-size: 12px;
+      color: #1a1a2e;
+      background: #f9fafb;
+      margin-bottom: 12px;
+      appearance: none;
+    }
+    select:focus { outline: 2px solid #0a66c2; border-color: transparent; }
+    .count-box {
+      background: #f0f4ff;
+      border: 1px solid #c7d7f9;
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin-bottom: 12px;
+      font-size: 13px;
+      color: #1f3a5f;
+      font-weight: 600;
+      text-align: center;
+    }
+    button {
+      width: 100%;
+      padding: 9px 14px;
+      border: none;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 8px;
+    }
+    #sync-btn {
+      background: #0a66c2;
+      color: white;
+    }
+    #sync-btn:hover { background: #004182; }
+    #sync-btn:disabled { background: #b0c4de; cursor: not-allowed; }
+    #clear-btn {
+      background: none;
+      color: #999;
+      font-size: 11px;
+      text-decoration: underline;
+      padding: 2px;
+      width: auto;
+      display: inline;
+      margin: 0;
+    }
+    #clear-btn:hover { color: #555; }
+    .status {
+      font-size: 11px;
+      color: #555;
+      margin-top: 10px;
+      min-height: 32px;
+      line-height: 1.5;
+    }
+    .status.success { color: #057642; }
+    .status.error   { color: #cc1016; }
+    .divider { border: none; border-top: 1px solid #eee; margin: 10px 0; }
+    .settings-link {
+      display: block;
+      text-align: right;
+      font-size: 10px;
+      color: #aaa;
+      text-decoration: none;
+      margin-top: 6px;
+    }
+    .settings-link:hover { color: #555; }
+    .not-configured {
+      background: #fff8e1;
+      border: 1px solid #ffe082;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 12px;
+      color: #8a6000;
+      margin-bottom: 12px;
+    }
+  </style>
+</head>
+<body>
+  <h1>A4G — LinkedIn Q&A Sync</h1>
+  <p class="subtitle">Sync captured screening answers to the dashboard.</p>
+
+  <div id="not-configured" class="not-configured" style="display:none">
+    ⚙ Dashboard URL and Sync Key not set. <a href="#" id="open-options">Open Settings →</a>
+  </div>
+
+  <div id="main-ui">
+    <label for="campaign-select">Sync into campaign</label>
+    <select id="campaign-select">
+      <option value="">— loading campaigns… —</option>
+    </select>
+
+    <div class="count-box" id="count-box">0 applicants captured on this page</div>
+
+    <button id="sync-btn" disabled>Sync to Dashboard</button>
+    <button id="clear-btn" type="button">Clear captured data</button>
+
+    <div class="status" id="status">Select a campaign then click Sync.</div>
+  </div>
+
+  <hr class="divider" />
+  <a href="#" class="settings-link" id="settings-link">⚙ Settings</a>
+
+  <script src="popup.js"></script>
+</body>
+</html>

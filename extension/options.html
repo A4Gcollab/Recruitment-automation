@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>A4G Q&A Sync — Settings</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      max-width: 480px;
+      margin: 40px auto;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 14px;
+      color: #1a1a2e;
+      padding: 0 20px;
+    }
+    h1 { font-size: 18px; color: #1f3a5f; margin-bottom: 6px; }
+    p.subtitle { color: #888; font-size: 12px; margin-bottom: 24px; }
+    label { display: block; font-weight: 600; font-size: 12px; color: #555; margin-bottom: 4px; }
+    input[type="text"], input[type="url"] {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid #d0d5dd;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 16px;
+    }
+    input:focus { outline: 2px solid #0a66c2; border-color: transparent; }
+    .hint { font-size: 11px; color: #999; margin-top: -12px; margin-bottom: 14px; }
+    button {
+      background: #0a66c2;
+      color: white;
+      border: none;
+      border-radius: 20px;
+      padding: 9px 24px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:hover { background: #004182; }
+    .saved { color: #057642; font-size: 12px; margin-left: 12px; display: none; }
+  </style>
+</head>
+<body>
+  <h1>A4G — Q&A Sync Settings</h1>
+  <p class="subtitle">Enter these once. They are saved locally in your Chrome profile.</p>
+
+  <label for="dashboard-url">Dashboard URL</label>
+  <input type="url" id="dashboard-url" placeholder="https://RecSup.omysha.org" />
+  <p class="hint">The URL of your recruitment dashboard (no trailing slash).</p>
+
+  <label for="sync-key">Sync Key (LINKEDIN_SYNC_KEY)</label>
+  <input type="text" id="sync-key" placeholder="Paste your LINKEDIN_SYNC_KEY here" />
+  <p class="hint">Found in your dashboard's .env.production file as LINKEDIN_SYNC_KEY.</p>
+
+  <button id="save-btn">Save Settings</button>
+  <span class="saved" id="saved-msg">✓ Saved</span>
+
+  <script src="options.js"></script>
+</body>
+</html>

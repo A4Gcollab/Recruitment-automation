@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, notInArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { campaigns, candidates, whatsappQueue } from "@/db/schema";
@@ -62,7 +62,22 @@ export const POST = withAuth<Ctx>(async (req: NextRequest, ctx, session) => {
   const idemKeyFor = (cid: string) =>
     `wa:${campaignId}:${template_name}:${cid}:${today}`;
   const idemKeys = ids.map(idemKeyFor);
-  // Only block if there's an active (pending/processing) item — not already-sent ones
+
+  // Block on active (pending/processing) or successfully-sent rows.
+  // For terminal-failed rows: reset them to pending so the recruiter can retry
+  // after fixing campaign data (e.g. filling in Zoom details that were blank).
+  if (idemKeys.length > 0) {
+    await db
+      .update(whatsappQueue)
+      .set({ status: "pending", retryCount: 0, errorMessage: null, scheduledFor: new Date() })
+      .where(
+        and(
+          inArray(whatsappQueue.idempotencyKey, idemKeys),
+          eq(whatsappQueue.status, "failed"),
+        ),
+      );
+  }
+
   const existingRows = idemKeys.length === 0
     ? []
     : await db
@@ -71,7 +86,7 @@ export const POST = withAuth<Ctx>(async (req: NextRequest, ctx, session) => {
         .where(
           and(
             inArray(whatsappQueue.idempotencyKey, idemKeys),
-            inArray(whatsappQueue.status, ["pending", "processing"]),
+            notInArray(whatsappQueue.status, ["failed"]), // pending / processing / sent
           ),
         );
   const existingKeys = new Set(existingRows.map((r) => r.idempotencyKey));

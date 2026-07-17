@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { eq } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { campaigns, candidates } from "@/db/schema";
 import { ERR } from "@/lib/api/response";
@@ -160,27 +160,45 @@ export const POST = withAuth<Ctx>(async (req: NextRequest, ctx, session) => {
     debatched.push(m);
   }
 
-  // Emails already in this campaign — compared case-insensitively. Stored emails
-  // keep their original case, so querying by lower-cased values would miss them
-  // and cause duplicate-key crashes on re-import.
+  // Candidates already in this campaign — fetch id + email so we can
+  // (a) skip re-insert and (b) stamp them as Good Fit via an UPDATE.
   const existingRows = await db
-    .select({ email: candidates.email })
+    .select({ id: candidates.id, email: candidates.email })
     .from(candidates)
     .where(eq(candidates.campaignId, campaignId));
-  const existingSet = new Set<string>();
+  const existingByEmail = new Map<string, string>(); // lower-email → id
   for (const r of existingRows) {
-    if (r.email) existingSet.add(r.email.toLowerCase());
+    if (r.email) existingByEmail.set(r.email.toLowerCase(), r.id);
   }
 
-  // Final insert list (skip rows already in DB)
+  // Split matched rows into: already in DB vs new
   let skipped_existing = 0;
   const toInsert: MatchedRow[] = [];
+  const toMarkGoodFitIds: string[] = [];
   for (const m of debatched) {
-    if (m.email && existingSet.has(m.email.toLowerCase())) {
+    if (m.email && existingByEmail.has(m.email.toLowerCase())) {
       skipped_existing++;
+      toMarkGoodFitIds.push(existingByEmail.get(m.email.toLowerCase())!);
       continue;
     }
     toInsert.push(m);
+  }
+
+  // Also find existing candidates with no email whose name matches (best effort)
+  const existingNoEmail = existingRows.filter((r) => !r.email);
+  // (name-matching without email is fuzzy — skip for now to avoid false positives)
+
+  // Mark already-existing Good Fit candidates in bulk
+  if (toMarkGoodFitIds.length > 0) {
+    await db
+      .update(candidates)
+      .set({ linkedinFit: "Good Fit", updatedAt: new Date() })
+      .where(
+        and(
+          eq(candidates.campaignId, campaignId),
+          inArray(candidates.id, toMarkGoodFitIds),
+        ),
+      );
   }
 
   let insertedCount = 0;
@@ -200,13 +218,11 @@ export const POST = withAuth<Ctx>(async (req: NextRequest, ctx, session) => {
           applicationDate: dataAppliedCol ? normCell(m.row[dataAppliedCol]) : null,
           resumeUrl: dataResumeCol ? normCell(m.row[dataResumeCol]) : null,
           applicantsyncScore: dataScoreCol ? normCell(m.row[dataScoreCol]) : null,
-          // Stash every non-standard column from the data file so HR can see
-          // them later (LinkedIn screening Q answers etc.)
+          linkedinFit: "Good Fit",
           linkedinData: Object.fromEntries(
             Object.entries(m.row).filter(([k, v]) => {
               if (!v) return false;
               const lk = k.toLowerCase();
-              // Skip columns we already lifted into typed fields above.
               return ![
                 dataNameCol,
                 dataEmailCol,

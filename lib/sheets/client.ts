@@ -29,7 +29,7 @@ const SHEET_GID_RE = /[?&#]gid=(\d+)/;
 
 export function parseSheetUrl(url: string): {
   spreadsheetId: string;
-  gid: number;
+  gid: number | null; // null means "no gid in URL — use first sheet"
 } {
   const idMatch = url.match(SHEET_ID_RE);
   if (!idMatch?.[1]) {
@@ -38,7 +38,7 @@ export function parseSheetUrl(url: string): {
   const gidMatch = url.match(SHEET_GID_RE);
   return {
     spreadsheetId: idMatch[1],
-    gid: gidMatch ? Number(gidMatch[1]) : 0,
+    gid: gidMatch ? Number(gidMatch[1]) : null,
   };
 }
 
@@ -51,11 +51,21 @@ export async function getSheet(
   const doc = new GoogleSpreadsheet(spreadsheetId, jwt);
   await doc.loadInfo();
 
-  const sheet = doc.sheetsByIndex.find((s) => s.sheetId === gid);
-  if (!sheet) {
-    throw new Error(`Sheet with gid=${gid} not found in spreadsheet`);
+  let sheetIndex: number;
+  if (gid === null) {
+    // No gid in URL — use the first sheet tab (index 0)
+    sheetIndex = 0;
+  } else {
+    const sheet = doc.sheetsByIndex.find((s) => s.sheetId === gid);
+    if (!sheet) {
+      throw new Error(`Sheet with gid=${gid} not found in spreadsheet`);
+    }
+    sheetIndex = doc.sheetsByIndex.indexOf(sheet);
   }
 
-  const sheetIndex = doc.sheetsByIndex.indexOf(sheet);
+  if (!doc.sheetsByIndex[sheetIndex]) {
+    throw new Error("Spreadsheet has no sheets");
+  }
+
   return { doc, sheetIndex };
 }

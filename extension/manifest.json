@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "A4G LinkedIn Q&A Sync",
-  "version": "1.0.0",
-  "description": "Captures LinkedIn screening question answers and syncs them directly to the A4G recruitment dashboard.",
+  "name": "A4G LinkedIn Tools",
+  "version": "1.1.0",
+  "description": "Two tools for the A4G LinkedIn hiring workflow: (1) export filtered applicants to CSV, (2) capture screening Q&A answers and sync to the recruitment dashboard.",
 
   "permissions": ["storage", "activeTab"],
   "host_permissions": [
@@ -12,14 +12,14 @@
   "content_scripts": [
     {
       "matches": ["https://www.linkedin.com/hiring/jobs/*/applicants*"],
-      "js": ["content.js"],
+      "js": ["exporter.js", "content.js"],
       "run_at": "document_idle"
     }
   ],
 
   "action": {
     "default_popup": "popup.html",
-    "default_title": "A4G LinkedIn Q&A Sync"
+    "default_title": "A4G LinkedIn Tools"
   },
 
   "options_page": "options.html"

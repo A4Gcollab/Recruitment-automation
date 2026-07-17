@@ -55,6 +55,7 @@ export function candidatesQueryKey(campaignId: string) {
 
 type StageFilter =
   | "all"
+  | "good_fit"
   | "imported"
   | "email_sent"
   | "wa_sent"
@@ -66,6 +67,7 @@ type StageFilter =
 
 const FILTER_LABELS: Record<StageFilter, string> = {
   all: "All",
+  good_fit: "Good Fit",
   imported: "Imported",
   email_sent: "Email Sent",
   wa_sent: "WA Sent",
@@ -80,6 +82,8 @@ function matchesFilter(c: Candidate, filter: StageFilter): boolean {
   switch (filter) {
     case "all":
       return true;
+    case "good_fit":
+      return c.linkedin_fit === "Good Fit";
     case "imported":
       return c.stage === "imported";
     case "email_sent":
@@ -161,6 +165,7 @@ export function CandidatesTable({
   const filterCounts = useMemo(() => {
     const counts: Record<StageFilter, number> = {
       all: allCandidates.length,
+      good_fit: 0,
       imported: 0,
       email_sent: 0,
       wa_sent: 0,
@@ -171,6 +176,7 @@ export function CandidatesTable({
       no_contact: 0,
     };
     for (const c of allCandidates) {
+      if (matchesFilter(c, "good_fit")) counts.good_fit++;
       if (matchesFilter(c, "imported")) counts.imported++;
       if (matchesFilter(c, "email_sent")) counts.email_sent++;
       if (matchesFilter(c, "wa_sent")) counts.wa_sent++;
@@ -361,7 +367,7 @@ export function CandidatesTable({
       </div>
 
       {/* Table */}
-      <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="overflow-x-auto rounded-xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <Table>
           <TableHeader>
             <TableRow className="border-slate-100 bg-slate-50/80 hover:bg-slate-50/80 dark:border-slate-800 dark:bg-slate-800/50">

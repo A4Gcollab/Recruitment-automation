@@ -54,10 +54,8 @@ export function ImportFilteredDialog({
       return importFiltered(campaignId, goodfitFile, dataFile);
     },
     onSuccess: (result: ImportFilteredResult) => {
-      toast.success("Filtered import complete", {
-        description: `Imported ${result.imported} candidate${
-          result.imported === 1 ? "" : "s"
-        } (${result.matched} matched · ${result.skipped_existing} already existed · ${result.skipped_no_email} without email).`,
+      toast.success("Good Fit import complete", {
+        description: `${result.imported} new · ${result.skipped_existing} already existed (tagged Good Fit) · ${result.skipped_no_email} without email.`,
       });
       queryClient.invalidateQueries({
         queryKey: candidatesQueryKey(campaignId),

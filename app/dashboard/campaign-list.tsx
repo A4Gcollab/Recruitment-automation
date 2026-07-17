@@ -48,7 +48,46 @@ export function CampaignList() {
         </Button>
       </div>
 
-      <div className="overflow-hidden rounded-lg border bg-card">
+      {/* ── Mobile card list (hidden on md+) ─────────────────────────── */}
+      <div className="md:hidden space-y-3">
+        {isLoading ? (
+          Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="rounded-lg border bg-card p-4 space-y-2">
+              <Skeleton className="h-4 w-40" />
+              <Skeleton className="h-3 w-24" />
+            </div>
+          ))
+        ) : isError ? (
+          <div className="rounded-lg border bg-card p-6 text-center">
+            <p className="text-sm text-destructive mb-2">Could not load campaigns.</p>
+            <Button onClick={() => refetch()} variant="outline" size="sm">Retry</Button>
+          </div>
+        ) : campaigns.length === 0 ? (
+          <div className="rounded-lg border bg-card p-8 flex flex-col items-center gap-3 text-center">
+            <FolderPlus className="size-8 text-muted-foreground" />
+            <p className="text-sm font-medium">No campaigns yet</p>
+            <Button onClick={() => setCreateOpen(true)} variant="outline" size="sm">Create campaign</Button>
+          </div>
+        ) : (
+          campaigns.map((c) => (
+            <Link key={c.id} href={`/campaigns/${c.id}`} className="block rounded-lg border bg-card p-4 hover:bg-muted/40 transition-colors">
+              <div className="flex items-start justify-between gap-2">
+                <p className="font-medium text-sm leading-tight">{c.role_name}</p>
+                <Badge className={`capitalize shrink-0 text-xs ${statusClass(c.status)}`}>{c.status}</Badge>
+              </div>
+              <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                {(c.interview_date || c.interview_time) && (
+                  <span>{c.interview_date}{c.interview_time ? ` · ${c.interview_time}` : ""}</span>
+                )}
+                <span>{new Date(c.created_at).toLocaleDateString()}</span>
+              </div>
+            </Link>
+          ))
+        )}
+      </div>
+
+      {/* ── Desktop table (hidden below md) ───────────────────────────── */}
+      <div className="hidden md:block overflow-hidden rounded-lg border bg-card">
         <Table>
           <TableHeader className="bg-muted/60">
             <TableRow className="hover:bg-transparent">

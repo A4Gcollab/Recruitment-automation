@@ -42,8 +42,35 @@ export function AtsSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside
-      className="relative z-20 flex h-screen w-[220px] shrink-0 flex-col overflow-hidden"
+    <>
+      {/* ── Mobile bottom nav (hidden on md+) ──────────────────────────── */}
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-30 flex md:hidden border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
+        {navItems.map(({ href, label, icon: Icon, prefixes }) => {
+          const isActive = prefixes.some((p) => pathname.startsWith(p));
+          return (
+            <Link
+              key={label}
+              href={href}
+              className={cn(
+                "flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium transition-colors",
+                isActive
+                  ? "text-blue-600 dark:text-blue-400"
+                  : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+              )}
+            >
+              <Icon className="size-5" />
+              <span>{label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* ── Desktop sidebar (hidden below md) ──────────────────────────── */}
+      <aside
+        className="relative z-20 hidden md:flex h-screen w-[220px] shrink-0 flex-col overflow-hidden"
       style={{
         background:
           "linear-gradient(180deg, #0F3DCC 0%, #1248E0 50%, #0B57D0 100%)",
@@ -124,6 +151,7 @@ export function AtsSidebar() {
           </div>
         </div>
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }

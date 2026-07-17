@@ -7,11 +7,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ChevronRight,
   ExternalLink,
+  MessageCircle,
   Pencil,
   Search,
   Settings,
   Trash2,
   Upload,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -43,6 +45,7 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
   const [editCampaignOpen, setEditCampaignOpen] = useState(false);
   const [chatTarget, setChatTarget] = useState<Candidate | null>(null);
   const [activeTab, setActiveTab] = useState<"candidates" | "responses">("candidates");
+  const [mobileWaOpen, setMobileWaOpen] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialChatId = searchParams.get("chat");
@@ -84,25 +87,25 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
       {/* ── Left: main workspace ── */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* Top bar: breadcrumb + search */}
-        <div className="flex items-center justify-between border-b border-slate-200/80 bg-white/80 px-6 py-2.5 backdrop-blur dark:border-slate-800 dark:bg-slate-900/80">
-          <nav className="flex items-center gap-1 text-sm">
+        <div className="flex items-center justify-between border-b border-slate-200/80 bg-white/80 px-4 py-2.5 backdrop-blur dark:border-slate-800 dark:bg-slate-900/80 md:px-6">
+          <nav className="flex min-w-0 items-center gap-1 text-sm">
             <Link
               href="/dashboard"
-              className="text-slate-400 transition-colors hover:text-slate-700 dark:hover:text-slate-300"
+              className="shrink-0 text-slate-400 transition-colors hover:text-slate-700 dark:hover:text-slate-300"
             >
               Campaigns
             </Link>
-            <ChevronRight className="size-3.5 text-slate-300 dark:text-slate-600" />
+            <ChevronRight className="size-3.5 shrink-0 text-slate-300 dark:text-slate-600" />
             {isLoading ? (
-              <Skeleton className="h-4 w-44" />
+              <Skeleton className="h-4 w-32 md:w-44" />
             ) : (
-              <span className="font-medium text-slate-800 dark:text-slate-200">
+              <span className="truncate font-medium text-slate-800 dark:text-slate-200">
                 {data?.role_name ?? "Campaign"}
               </span>
             )}
           </nav>
 
-          <div className="relative">
+          <div className="relative hidden md:block">
             <Search className="absolute left-2.5 top-1/2 size-3 -translate-y-1/2 text-slate-400" />
             <input
               placeholder="Search candidates..."
@@ -117,7 +120,7 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto">
           {/* Campaign header */}
-          <div className="border-b border-slate-200/80 bg-white px-6 py-4 dark:border-slate-800 dark:bg-slate-900">
+          <div className="border-b border-slate-200/80 bg-white px-4 py-4 dark:border-slate-800 dark:bg-slate-900 md:px-6">
             {isLoading ? (
               <div className="space-y-2">
                 <Skeleton className="h-6 w-64" />
@@ -143,7 +146,7 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
                     size="sm"
                   >
                     <Upload className="size-3.5" />
-                    Import candidates
+                    <span className="hidden sm:inline">Import candidates</span>
                   </Button>
                   <Button
                     variant="outline"
@@ -179,7 +182,7 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
           </div>
 
           {/* Tab switcher */}
-          <div className="flex gap-1 border-b border-slate-200/80 bg-white px-6 dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex gap-1 border-b border-slate-200/80 bg-white px-4 dark:border-slate-800 dark:bg-slate-900 md:px-6">
             {(["candidates", "responses"] as const).map((tab) => (
               <button
                 key={tab}
@@ -196,7 +199,7 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
           </div>
 
           {/* Tab content */}
-          <div className="p-6">
+          <div className="p-4 md:p-6">
             {activeTab === "candidates" ? (
               <CandidatesTable
                 campaignId={campaignId}
@@ -213,12 +216,50 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
         </div>
       </div>
 
-      {/* ── Right: WhatsApp workspace (always visible) ── */}
-      <div className="relative w-[400px] shrink-0 border-l border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+      {/* ── Right: WhatsApp workspace — desktop sidebar ── */}
+      <div className="relative hidden w-[400px] shrink-0 border-l border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 md:block">
         <WhatsAppWorkspace
           candidate={chatTarget}
           onClose={() => setChatTarget(null)}
         />
+      </div>
+
+      {/* ── Mobile: WhatsApp floating button + overlay ── */}
+      <div className="md:hidden">
+        {/* Floating trigger */}
+        <button
+          onClick={() => setMobileWaOpen(true)}
+          className="fixed bottom-20 right-4 z-40 flex size-12 items-center justify-center rounded-full bg-[#25D366] shadow-lg text-white"
+          aria-label="Open WhatsApp workspace"
+        >
+          <MessageCircle className="size-5" />
+          {chatTarget && (
+            <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
+              1
+            </span>
+          )}
+        </button>
+
+        {/* Full-screen overlay */}
+        {mobileWaOpen && (
+          <div className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-slate-900">
+            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">WhatsApp</p>
+              <button
+                onClick={() => setMobileWaOpen(false)}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <WhatsAppWorkspace
+                candidate={chatTarget}
+                onClose={() => { setChatTarget(null); setMobileWaOpen(false); }}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       <ImportDialog

@@ -81,7 +81,23 @@ export async function GET(req: NextRequest) {
       continue;
     }
 
-    const params = (item.templateParams as string[]) ?? [];
+    // Rebuild template params from live campaign+candidate data so that any
+    // Zoom/interview details filled in after the initial queue are picked up.
+    let params: string[];
+    if (item.templateName === "a4g_interview_invite_v1") {
+      const firstName = candidate.fullName.trim().split(/\s+/)[0] ?? candidate.fullName;
+      params = [
+        firstName,
+        campaign.roleName,
+        campaign.interviewDate ?? "",
+        campaign.interviewTime ?? "",
+        campaign.zoomLink ?? "",
+        campaign.zoomMeetingId ?? "",
+        campaign.zoomPasscode ?? "",
+      ];
+    } else {
+      params = (item.templateParams as string[]) ?? [];
+    }
 
     const result = await sendWhatsAppTemplate({
       to: candidate.phone,

@@ -248,7 +248,22 @@ v0.3.1 only `process-queue` is built; add the others as they ship.
 
 ---
 
-## 9. First-run checklist
+## 9. Chrome Extension setup (one-time per HR laptop)
+
+1. Generate a sync key and add to `.env.production`:
+   ```
+   LINKEDIN_SYNC_KEY=<openssl rand -hex 24>
+   ```
+2. Redeploy the app so the new env var is live.
+3. In Chrome: go to `chrome://extensions` → enable **Developer mode** → **Load unpacked** → select the `extension/` folder from the repo.
+4. Click the extension icon → **Settings** → enter:
+   - **Dashboard URL**: `https://RecSup.omysha.org`
+   - **Sync Key**: the value of `LINKEDIN_SYNC_KEY` from `.env.production`
+5. Done. Open any LinkedIn hiring page — the floating panel appears automatically.
+
+---
+
+## 10. First-run checklist
 
 - [ ] `.env.local` populated.
 - [ ] Local: `sudo service postgresql start`. Prod: the `db` container is up (`docker compose -f docker-compose.prod.yml ps`).

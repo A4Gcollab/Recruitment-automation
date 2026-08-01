@@ -6,9 +6,9 @@
 (function () {
   "use strict";
 
-  const PANEL_LOAD_TIMEOUT_MS = 8000;
-  const PANEL_SETTLE_MS       = 1200;
-  const INTER_APPLICANT_MS    = 900;
+  const PANEL_LOAD_TIMEOUT_MS = 10000;  // increased: slow connections need more time
+  const PANEL_SETTLE_MS       = 1500;   // increased: ensure DOM fully rendered
+  const INTER_APPLICANT_MS    = 1000;   // increased: reduce rate to avoid LinkedIn throttle
   const CONTAINER_ID          = "a4g-sync-container";
   const STORAGE_KEY           = "a4g_captured";
 
